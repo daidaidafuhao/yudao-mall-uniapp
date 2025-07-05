@@ -190,10 +190,16 @@
   });
 
   // #ifdef MP-WEIXIN
-  uni.showShareMenu({
-    withShareTicket: true,
-    menus: ['shareAppMessage', 'shareTimeline'],
-  });
+  // 简化版分享配置 - 只启用分享给好友
+  try {
+    uni.showShareMenu({
+      withShareTicket: true,
+      // 不指定 menus 参数，使用默认配置（只包含分享给好友）
+    });
+  } catch (error) {
+    console.warn('显示分享菜单失败:', error);
+  }
+  
   // 微信小程序分享好友
   onShareAppMessage(() => {
     return {
@@ -202,14 +208,15 @@
       imageUrl: shareInfo.value.image,
     };
   });
-  // 微信小程序分享朋友圈
-  onShareTimeline(() => {
-    return {
-      title: shareInfo.value.title,
-      query: shareInfo.value.forward.path,
-      imageUrl: shareInfo.value.image,
-    };
-  });
+  
+  // 如果需要分享到朋友圈，可以单独处理
+  // onShareTimeline(() => {
+  //   return {
+  //     title: shareInfo.value.title,
+  //     query: shareInfo.value.forward.path,
+  //     imageUrl: shareInfo.value.image,
+  //   };
+  // });
   // #endif
 
   // 组件中使用 onMounted 监听页面加载，不是页面组件不使用 onShow

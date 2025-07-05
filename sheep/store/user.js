@@ -136,11 +136,6 @@ const user = defineStore({
       // 登录后设置全局分享参数
       $share.getShareInfo();
 
-      // 提醒绑定手机号
-      if (app().platform.bind_mobile && !this.userInfo.mobile) {
-        showAuthModal('changeMobile');
-      }
-
       // 绑定推广员
       $share.bindBrokerageUser();
     },

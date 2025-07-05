@@ -18,6 +18,9 @@ const login = async () => {
   return new Promise(async (resolve, reject) => {
     // 1. 获得微信 code
     const codeResult = await uni.login();
+    console.log(codeResult);
+    console.log(codeResult.errMsg);
+    
     if (codeResult.errMsg !== 'login:ok') {
       return resolve(false);
     }

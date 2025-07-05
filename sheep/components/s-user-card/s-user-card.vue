@@ -27,7 +27,7 @@
     <!-- 提示绑定手机号 先隐藏 yudao 需要再修改 -->
     <view
       class="bind-mobile-box ss-flex ss-row-between ss-col-center"
-      v-if="isLogin && !userInfo.mobile"
+      v-if="false"
     >
       <view class="ss-flex">
         <text class="cicon-mobile-o" />

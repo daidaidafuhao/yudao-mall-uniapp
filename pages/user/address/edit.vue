@@ -50,6 +50,20 @@
             </template>
           </uni-easyinput>
         </uni-forms-item>
+
+        <!-- 添加无人机柜选择 -->
+        <uni-forms-item
+          name="cabinetId"
+          label="无人机柜"
+          class="form-item"
+        >
+          <view class="cabinet-select" @tap="showCabinetList">
+            <text v-if="state.selectedCabinet">{{ state.selectedCabinet.name }} ({{ state.selectedCabinet.code }})</text>
+            <text v-else class="placeholder">请选择无人机柜</text>
+            <uni-icons type="right" />
+          </view>
+        </uni-forms-item>
+
         <uni-forms-item
           name="detailAddress"
           label="详细地址"
@@ -62,8 +76,8 @@
             type="textarea"
             v-model="state.model.detailAddress"
             placeholderStyle="color:#BBBBBB;font-size:30rpx;font-weight:400;line-height:normal"
-            placeholder="请输入详细地址"
-            clearable
+            placeholder="请先选择无人机柜"
+            disabled
           />
         </uni-forms-item>
       </view>
@@ -93,13 +107,15 @@
 </template>
 
 <script setup>
-  import { ref, reactive, unref } from 'vue';
+  import { ref, reactive, unref, onMounted } from 'vue';
   import sheep from '@/sheep';
   import { onLoad } from '@dcloudio/uni-app';
   import _ from 'lodash-es';
   import { mobile } from '@/sheep/validate/form';
   import AreaApi from '@/sheep/api/system/area';
   import AddressApi from '@/sheep/api/member/address';
+
+  import DroneApi from '@/sheep/api/delivery/drone';
 
   const addressFormRef = ref(null);
   const state = reactive({
@@ -110,7 +126,9 @@
       detailAddress: '',
       defaultStatus: false,
       areaName: '',
+      cabinetId: '',
     },
+    selectedCabinet: null,
     rules: {},
   });
 
@@ -160,6 +178,56 @@
     }
   };
 
+  // 显示无人机柜列表
+  const showCabinetList = async () => {
+    try {
+      // 显示加载中
+      uni.showLoading({
+        title: '加载中...'
+      });
+
+      // 使用固定的经纬度（这里使用深圳的某个位置作为示例）
+      const testLocation = {
+        latitude: 22.543099,  // 深圳南山区
+        longitude: 113.934235
+      };
+
+      // 获取附近的无人机柜
+      const { data, code } = await DroneApi.getNearestCabinetList({
+        latitude: testLocation.latitude,
+        longitude: testLocation.longitude,
+        limit: 10
+      });
+
+      if (code === 0 && data && data.length > 0) {
+        state.cabinetList = data;
+        // 显示选择器
+        uni.showActionSheet({
+          itemList: data.map(item => `${item.name} (${item.code}) - ${(item.distance / 1000).toFixed(2)}公里`),
+          success: (res) => {
+            state.selectedCabinet = state.cabinetList[res.tapIndex];
+            // 更新详细地址为柜子名称和编号
+            state.model.detailAddress = `${state.selectedCabinet.name} (${state.selectedCabinet.code})`;
+            state.model.cabinetId = state.selectedCabinet.id;
+          }
+        });
+      } else {
+        uni.showToast({
+          title: '附近没有可用的无人机柜',
+          icon: 'none'
+        });
+      }
+    } catch (error) {
+      console.error('获取柜子列表失败:', error);
+      uni.showToast({
+        title: '获取柜子列表失败',
+        icon: 'none'
+      });
+    } finally {
+      uni.hideLoading();
+    }
+  };
+
   // 保存收货地址
   const onSave = async () => {
     // 参数校验
@@ -169,6 +237,12 @@
         console.log('error: ', error);
       });
     if (!validate) {
+      return;
+    }
+
+    // 检查是否选择了柜子
+    if (!state.selectedCabinet) {
+      sheep.$helper.toast('请选择无人机柜');
       return;
     }
 
@@ -300,6 +374,19 @@
       height: 80rpx;
       border-radius: 40rpx;
       background: var(--ui-BG);
+    }
+  }
+
+  .cabinet-select {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 72rpx;
+    padding: 0 20rpx;
+    
+    .placeholder {
+      color: #BBBBBB;
+      font-size: 30rpx;
     }
   }
 </style>

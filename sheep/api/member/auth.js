@@ -1,69 +1,6 @@
 import request from '@/sheep/request';
 
 const AuthUtil = {
-  // 使用手机 + 密码登录
-  login: (data) => {
-    return request({
-      url: '/member/auth/login',
-      method: 'POST',
-      data,
-      custom: {
-        showSuccess: true,
-        loadingMsg: '登录中',
-        successMsg: '登录成功',
-      },
-    });
-  },
-  // 使用手机 + 验证码登录
-  smsLogin: (data) => {
-    return request({
-      url: '/member/auth/sms-login',
-      method: 'POST',
-      data,
-      custom: {
-        showSuccess: true,
-        loadingMsg: '登录中',
-        successMsg: '登录成功',
-      },
-    });
-  },
-  // 发送手机验证码
-  sendSmsCode: (mobile, scene) => {
-    return request({
-      url: '/member/auth/send-sms-code',
-      method: 'POST',
-      data: {
-        mobile,
-        scene,
-      },
-      custom: {
-        loadingMsg: '发送中',
-        showSuccess: true,
-        successMsg: '发送成功',
-      },
-    });
-  },
-  // 登出系统
-  logout: () => {
-    return request({
-      url: '/member/auth/logout',
-      method: 'POST',
-    });
-  },
-  // 刷新令牌
-  refreshToken: (refreshToken) => {
-    return request({
-      url: '/member/auth/refresh-token',
-      method: 'POST',
-      params: {
-        refreshToken,
-      },
-      custom: {
-        showLoading: false, // 不用加载中
-        showError: false, // 不展示错误提示
-      },
-    });
-  },
   // 社交授权的跳转
   socialAuthRedirect: (type, redirectUri) => {
     return request({
@@ -126,7 +63,27 @@ const AuthUtil = {
       },
     });
   },
-  //
+  // 登出系统
+  logout: () => {
+    return request({
+      url: '/member/auth/logout',
+      method: 'POST',
+    });
+  },
+  // 刷新令牌
+  refreshToken: (refreshToken) => {
+    return request({
+      url: '/member/auth/refresh-token',
+      method: 'POST',
+      params: {
+        refreshToken,
+      },
+      custom: {
+        showLoading: false, // 不用加载中
+        showError: false, // 不展示错误提示
+      },
+    });
+  },
 };
 
 export default AuthUtil;

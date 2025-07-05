@@ -2,37 +2,11 @@
   <!-- 规格弹窗 -->
   <su-popup :show="authType !== ''" round="10" :showClose="true" @close="closeAuthModal">
     <view class="login-wrap">
-      <!-- 1. 账号密码登录 accountLogin -->
-      <account-login
-        v-if="authType === 'accountLogin'"
-        :agreeStatus="state.protocol"
-        @onConfirm="onConfirm"
-      />
-
-      <!-- 2. 短信登录  smsLogin -->
-      <sms-login
-        v-if="authType === 'smsLogin'"
-        :agreeStatus="state.protocol"
-        @onConfirm="onConfirm"
-      />
-
-      <!-- 3. 忘记密码 resetPassword-->
-      <reset-password v-if="authType === 'resetPassword'" />
-
-      <!-- 4. 绑定手机号 changeMobile -->
-      <change-mobile v-if="authType === 'changeMobile'" />
-
-      <!-- 5. 修改密码 changePassword-->
-      <changePassword v-if="authType === 'changePassword'" />
-
-      <!-- 6. 微信小程序授权 -->
+      <!-- 微信小程序授权 -->
       <mp-authorization v-if="authType === 'mpAuthorization'" />
 
-      <!-- 7. 第三方登录 -->
-      <view
-        v-if="['accountLogin', 'smsLogin'].includes(authType)"
-        class="auto-login-box ss-flex ss-flex-col ss-row-center ss-col-center"
-      >
+      <!-- 第三方登录 -->
+      <view class="auto-login-box ss-flex ss-flex-col ss-row-center ss-col-center">
         <!-- 7.1 微信小程序的快捷登录 -->
         <view v-if="sheep.$platform.name === 'WechatMiniProgram'" class="ss-flex register-box">
           <view class="register-title">还没有账号?</view>
@@ -60,26 +34,10 @@
             :src="sheep.$url.static('/static/img/shop/platform/wechat.png')"
           />
         </button>
-
-        <!-- 7.3 iOS 登录 TODO 芋艿：等后面搞 App 再弄 -->
-        <button
-          v-if="sheep.$platform.os === 'ios' && sheep.$platform.name === 'App'"
-          @tap="thirdLogin('apple')"
-          class="ss-reset-button auto-login-btn"
-        >
-          <image
-            class="auto-login-img"
-            :src="sheep.$url.static('/static/img/shop/platform/apple.png')"
-          />
-        </button>
       </view>
 
       <!-- 用户协议的勾选 -->
-      <view
-        v-if="['accountLogin', 'smsLogin'].includes(authType)"
-        class="agreement-box ss-flex ss-flex-col ss-col-center"
-        :class="{ shake: currentProtocol }"
-      >
+      <view class="agreement-box ss-flex ss-flex-col ss-col-center" :class="{ shake: currentProtocol }">
         <view class="agreement-title ss-m-b-20">请选择是否同意以下协议(请联网查看)：</view>
         
         <view class="agreement-options-container">
@@ -128,11 +86,6 @@
 <script setup>
   import { computed, reactive, ref } from 'vue';
   import sheep from '@/sheep';
-  import accountLogin from './components/account-login.vue';
-  import smsLogin from './components/sms-login.vue';
-  import resetPassword from './components/reset-password.vue';
-  import changeMobile from './components/change-mobile.vue';
-  import changePassword from './components/change-password.vue';
   import mpAuthorization from './components/mp-authorization.vue';
   import { closeAuthModal, showAuthModal } from '@/sheep/hooks/useModal';
 
@@ -172,7 +125,7 @@
     }, 1000);
   }
 
-  // 第三方授权登陆（微信小程序、Apple）
+  // 第三方授权登陆（微信）
   const thirdLogin = async (provider) => {
     if (state.protocol !== true) {
       currentProtocol.value = true;
@@ -203,7 +156,7 @@
     }
   };
 
-  // 微信小程序的“手机号快速验证”：https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/getPhoneNumber.html
+  // 微信小程序的"手机号快速验证"
   const getPhoneNumber = async (e) => {
     if (e.detail.errMsg !== 'getPhoneNumber:ok') {
       sheep.$helper.toast('快捷登录失败');
