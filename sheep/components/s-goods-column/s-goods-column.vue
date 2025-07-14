@@ -264,13 +264,18 @@
       <view v-if="grouponTag" class="groupon-tag ss-flex ss-row-center">
         <view class="tag-icon">拼团</view>
       </view>
+      
+      <!-- 左侧商品图片 -->
       <image
         class="lg-img-box"
         :src="sheep.$url.cdn(data.image || data.picUrl)"
         mode="aspectFill"
       />
-      <view class="lg-goods-content ss-flex-1 ss-flex-col ss-row-between ss-p-b-10 ss-p-t-20">
-        <view>
+      
+      <!-- 右侧内容区域 -->
+      <view class="lg-goods-content ss-flex-1 ss-flex-col">
+        <!-- 上半部分：标题和介绍 -->
+        <view class="lg-content-top">
           <view
             v-if="goodsFields.title?.show || goodsFields.name?.show"
             class="lg-goods-title ss-line-2"
@@ -280,22 +285,22 @@
           </view>
           <view
             v-if="goodsFields.subtitle?.show || goodsFields.introduction?.show"
-            class="lg-goods-subtitle ss-m-t-10 ss-line-1"
+            class="lg-goods-subtitle ss-m-t-8 ss-line-1"
             :style="[{ color: subTitleColor, background: subTitleBackground }]"
           >
             {{ data.subtitle || data.introduction }}
           </view>
-        </view>
-        <view>
+          
+          <!-- 活动标签 -->
           <slot name="activity">
-            <view v-if="data.promos?.length" class="tag-box ss-flex ss-col-center">
+            <view v-if="data.promos?.length" class="lg-tag-box ss-flex ss-col-center ss-m-t-8">
               <view class="activity-tag ss-m-r-10" v-for="item in data.promos" :key="item.id">
                 {{ item.title }}
               </view>
             </view>
           </slot>
           <!-- 活动信息 -->
-          <view class="iconBox" v-if="data.promotionType > 0 || data.rewardActivity">
+          <view class="lg-activity-box ss-m-t-8" v-if="data.promotionType > 0 || data.rewardActivity">
             <view class="card" v-if="discountText">{{ discountText }}</view>
             <view
               class="card2"
@@ -305,20 +310,22 @@
               {{ item }}
             </view>
           </view>
-          <view v-if="goodsFields.price?.show" class="ss-flex ss-col-bottom font-OPPOSANS">
-            <view class="sl-goods-price ss-m-r-12" :style="[{ color: goodsFields.price.color }]">
+        </view>
+        
+        <!-- 下半部分：价格、销量和购买按钮 -->
+        <view class="lg-content-bottom ss-flex ss-row-between ss-col-center">
+          <view class="lg-price-info">
+            <view v-if="goodsFields.price?.show" class="lg-goods-price font-OPPOSANS" :style="[{ color: goodsFields.price.color }]">
               <!-- 活动价格 -->
               <view
-                class="ss-flex"
-                v-if="
-                  data.activityType && data.activityType === PromotionActivityTypeEnum.POINT.type
-                "
+                class="ss-flex ss-col-center"
+                v-if="data.activityType && data.activityType === PromotionActivityTypeEnum.POINT.type"
               >
                 <image
                   :src="sheep.$url.static('/static/img/shop/goods/score1.svg')"
                   class="point-img"
                 ></image>
-                <text class="point-text ss-m-r-16">
+                <text class="point-text">
                   {{ data.point }}
                   {{
                     !data.pointPrice || data.pointPrice === 0
@@ -328,34 +335,39 @@
                 </text>
               </view>
               <template v-else>
-                <text class="price-unit ss-font-24">{{ priceUnit }}</text>
-                <text v-if="data.promotionPrice > 0">{{ fen2yuan(data.promotionPrice) }}</text>
-                <text v-else>
+                <text class="price-unit">{{ priceUnit }}</text>
+                <text class="price-number" v-if="data.promotionPrice > 0">{{ fen2yuan(data.promotionPrice) }}</text>
+                <text class="price-number" v-else>
                   {{ isArray(data.price) ? fen2yuan(data.price[0]) : fen2yuan(data.price) }}
                 </text>
               </template>
             </view>
+            
+            <!-- 原价 -->
             <view
               v-if="
                 (goodsFields.original_price?.show || goodsFields.marketPrice?.show) &&
                 (data.original_price > 0 || data.marketPrice > 0)
               "
-              class="goods-origin-price ss-m-t-16 font-OPPOSANS ss-flex"
+              class="lg-origin-price font-OPPOSANS"
               :style="[{ color: originPriceColor }]"
             >
-              <text class="price-unit ss-font-20">{{ priceUnit }}</text>
-              <view class="ss-m-l-8">{{ fen2yuan(data.marketPrice) }}</view>
+              <text class="price-unit">{{ priceUnit }}</text>
+              <text>{{ fen2yuan(data.marketPrice) }}</text>
             </view>
+            
+            <!-- 销量信息 -->
+            <view class="lg-sales-text">{{ salesAndStock }}</view>
           </view>
-          <view class="ss-m-t-8 ss-flex ss-col-center ss-flex-wrap">
-            <view class="sales-text">{{ salesAndStock }}</view>
-          </view>
+          
+          <!-- 购买按钮 -->
+          <slot name="cart">
+            <view class="lg-buy-box ss-flex ss-col-center ss-row-center" v-if="buttonShow">
+              购买
+            </view>
+          </slot>
         </view>
       </view>
-
-      <slot name="cart">
-        <view class="buy-box ss-flex ss-col-center ss-row-center" v-if="buttonShow"> 去购买</view>
-      </slot>
     </view>
 
     <!-- sl卡片：竖向型，一行放一个，图片上内容下边 -->
@@ -895,51 +907,119 @@
     position: relative;
     z-index: 1;
     background-color: $white;
-    height: 280rpx;
+    min-height: 200rpx;
+    padding: 20rpx;
+    box-sizing: border-box;
 
     .lg-img-box {
-      width: 280rpx;
-      height: 280rpx;
+      width: 160rpx;
+      height: 160rpx;
       margin-right: 20rpx;
+      border-radius: 8rpx;
+      flex-shrink: 0;
+    }
+
+    .lg-goods-content {
+      padding: 0;
+      justify-content: space-between;
+      
+      .lg-content-top {
+        flex: 1;
+        margin-bottom: 20rpx;
+      }
+      
+      .lg-content-bottom {
+        margin-top: auto;
+      }
     }
 
     .lg-goods-title {
       font-size: 28rpx;
       font-weight: 500;
       color: #333333;
-      // line-height: 36rpx;
-      // width: 410rpx;
+      line-height: 40rpx;
+      margin-bottom: 0;
     }
 
     .lg-goods-subtitle {
       font-size: 24rpx;
       font-weight: 400;
       color: #999999;
-      // line-height: 30rpx;
-      // width: 410rpx;
+      line-height: 34rpx;
+    }
+
+    .lg-tag-box {
+      flex-wrap: wrap;
+      
+      .activity-tag {
+        font-size: 20rpx;
+        padding: 4rpx 8rpx;
+        line-height: 1;
+      }
+    }
+
+    .lg-activity-box {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8rpx;
+      
+      .card, .card2 {
+        font-size: 20rpx;
+        padding: 4rpx 8rpx;
+        line-height: 1;
+        margin: 0;
+      }
+    }
+
+    .lg-price-info {
+      flex: 1;
     }
 
     .lg-goods-price {
-      font-size: 30rpx;
+      font-size: 32rpx;
       color: $red;
-      line-height: 36rpx;
+      line-height: 40rpx;
+      margin-bottom: 8rpx;
+      
+      .price-unit {
+        font-size: 24rpx;
+        margin-right: 4rpx;
+      }
+      
+      .price-number {
+        font-size: 32rpx;
+        font-weight: 600;
+      }
     }
 
-    .buy-box {
-      position: absolute;
-      bottom: 20rpx;
-      right: 20rpx;
-      z-index: 2;
+    .lg-origin-price {
+      font-size: 24rpx;
+      color: #c4c4c4;
+      text-decoration: line-through;
+      margin-bottom: 8rpx;
+      
+      .price-unit {
+        font-size: 20rpx;
+        margin-right: 4rpx;
+      }
+    }
+
+    .lg-sales-text {
+      font-size: 22rpx;
+      color: #c4c4c4;
+      transform: scale(0.9);
+      transform-origin: left center;
+    }
+
+    .lg-buy-box {
       width: 120rpx;
-      height: 50rpx;
+      height: 60rpx;
       background: linear-gradient(90deg, #fe8900, #ff5e00);
-      border-radius: 25rpx;
+      border-radius: 30rpx;
       font-size: 24rpx;
       color: #ffffff;
-    }
-
-    .tag-box {
-      width: 100%;
+      flex-shrink: 0;
+      margin-left: 20rpx;
     }
   }
 

@@ -192,10 +192,10 @@
   // #ifdef MP-WEIXIN
   // 简化版分享配置 - 只启用分享给好友
   try {
-    uni.showShareMenu({
-      withShareTicket: true,
+  uni.showShareMenu({
+    withShareTicket: true,
       // 不指定 menus 参数，使用默认配置（只包含分享给好友）
-    });
+  });
   } catch (error) {
     console.warn('显示分享菜单失败:', error);
   }

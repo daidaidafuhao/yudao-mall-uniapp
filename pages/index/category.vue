@@ -5,13 +5,13 @@
       <view class="three-level-wrap ss-flex ss-col-top">
         <!-- 商品分类（左） -->
         <view class="side-menu-wrap" :style="[{ top: Number(statusBarHeight + 88) + 'rpx' }]">
-          <scroll-view scroll-y :style="[{ height: pageHeight + 'px' }]">
+          <scroll-view scroll-y :style="[{ height: pageHeight + 'px' }]" :scroll-top="leftScrollTop">
             <view
               class="menu-item ss-flex"
               v-for="(item, index) in state.categoryList"
               :key="item.id"
               :class="[{ 'menu-item-active': index === state.activeMenu }]"
-              @tap="onMenu(index)"
+              @tap="onMenuClick(index)"
             >
               <view class="menu-title ss-line-1">
                 {{ item.name }}
@@ -19,34 +19,61 @@
             </view>
           </scroll-view>
         </view>
-        <!-- 商品分类（右） -->
-        <view class="goods-list-box" v-if="state.categoryList?.length">
-          <scroll-view scroll-y :style="[{ height: pageHeight + 'px' }]">
-            <image
-              v-if="state.categoryList[state.activeMenu].picUrl"
-              class="banner-img"
-              :src="sheep.$url.cdn(state.categoryList[state.activeMenu].picUrl)"
-              mode="widthFix"
-            />
-            <first-one v-if="state.style === 'first_one'" :pagination="state.pagination" />
-            <first-two v-if="state.style === 'first_two'" :pagination="state.pagination" />
-            <second-one
-              v-if="state.style === 'second_one'"
-              :data="state.categoryList"
-              :activeMenu="state.activeMenu"
-            />
-            <uni-load-more
-              v-if="
-                (state.style === 'first_one' || state.style === 'first_two') &&
-                state.pagination.total > 0
-              "
-              :status="state.loadStatus"
-              :content-text="{
-                contentdown: '点击查看更多',
-              }"
-              @tap="loadMore"
-            />
+        
+        <!-- 商品列表（右） -->
+        <view class="goods-list-box" v-if="state.allCategoryGoods.length > 0">
+          <scroll-view 
+            scroll-y 
+            :style="[{ height: pageHeight + 'px' }]"
+            @scroll="onRightScroll"
+            :scroll-top="state.rightScrollTop"
+            @scrolltolower="onScrollToLower"
+          >
+            <!-- 遍历所有分类 -->
+            <view 
+              v-for="(category, categoryIndex) in state.categoryList" 
+              :key="category.id"
+              :id="`category-${categoryIndex}`"
+              class="category-section"
+            >
+              <!-- 分类标题 -->
+              <view class="category-title">{{ category.name }}</view>
+              
+              <!-- 该分类下的商品 -->
+              <view class="goods-list-container" v-if="state.allCategoryGoods[categoryIndex] && state.allCategoryGoods[categoryIndex].length > 0">
+                <view class="goods-item-wrapper" v-for="item in state.allCategoryGoods[categoryIndex]" :key="item.id">
+                  <s-goods-column
+                    class="goods-card"
+                    size="lg"
+                    :data="item"
+                    :topRadius="10"
+                    :bottomRadius="10"
+                    @click="sheep.$router.go('/pages/goods/index', { id: item.id })"
+                  />
+                </view>
+              </view>
+              
+              <!-- 分类无商品提示 -->
+              <view v-else class="empty-category">
+                <text class="empty-text">该分类暂无商品</text>
+              </view>
+            </view>
+            
+            <!-- 加载更多提示 -->
+            <view class="load-more-tip" v-if="!state.allLoaded">
+              <text>{{ state.loading ? '加载中...' : '已显示全部分类' }}</text>
+            </view>
           </scroll-view>
+        </view>
+        
+        <!-- 全局加载状态 -->
+        <view v-else-if="state.loading" class="loading-container">
+          <text>正在加载商品...</text>
+        </view>
+        
+        <!-- 全局空状态 -->
+        <view v-else class="empty-container">
+          <s-empty icon="/static/soldout-empty.png" text="暂无商品分类" />
         </view>
       </view>
     </view>
@@ -54,31 +81,26 @@
 </template>
 
 <script setup>
-  import secondOne from './components/second-one.vue';
-  import firstOne from './components/first-one.vue';
-  import firstTwo from './components/first-two.vue';
   import sheep from '@/sheep';
   import CategoryApi from '@/sheep/api/product/category';
   import SpuApi from '@/sheep/api/product/spu';
-  import { onLoad } from '@dcloudio/uni-app';
-  import { computed, reactive } from 'vue';
+  import { onLoad, onReady } from '@dcloudio/uni-app';
+  import { computed, reactive, nextTick } from 'vue';
   import _ from 'lodash-es';
   import { handleTree } from '@/sheep/helper/utils';
 
   const state = reactive({
-    style: 'second_one', // first_one（一级 - 样式一）, first_two（二级 - 样式二）, second_one（二级）
     categoryList: [], // 商品分类树
-    activeMenu: 0, // 选中的一级菜单，在 categoryList 的下标
-
-    pagination: {
-      // 商品分页
-      list: [], // 商品列表
-      total: [], // 商品总数
-      pageNo: 1,
-      pageSize: 6,
-    },
-    loadStatus: '',
+    activeMenu: 0, // 当前高亮的分类
+    allCategoryGoods: [], // 所有分类的商品 [分类1商品[], 分类2商品[], ...]
+    loading: false,
+    allLoaded: false,
+    rightScrollTop: 0,
+    categoryPositions: [], // 记录每个分类在滚动容器中的位置
+    isManualScroll: false, // 是否为手动点击分类触发的滚动
   });
+
+  let leftScrollTop = 0; // 左侧菜单滚动位置
 
   const { safeArea } = sheep.$platform.device;
   const pageHeight = computed(() => safeArea.height - 44 - 50);
@@ -93,147 +115,289 @@
     state.categoryList = handleTree(data);
   }
 
-  // 选中菜单
-  const onMenu = (val) => {
-    state.activeMenu = val;
-    if (state.style === 'first_one' || state.style === 'first_two') {
-      state.pagination.pageNo = 1;
-      state.pagination.list = [];
-      state.pagination.total = 0;
-      getGoodsList();
+  // 获取指定分类下的所有商品
+  async function getCategoryGoods(category) {
+    try {
+      let allGoods = [];
+      
+      if (category.children && category.children.length > 0) {
+        // 并发请求所有子分类的商品
+        const promises = category.children.map(child => 
+          SpuApi.getSpuPage({
+            categoryId: child.id,
+            pageNo: 1,
+            pageSize: 50,
+          })
+        );
+        
+        const results = await Promise.all(promises);
+        
+        // 合并所有子分类的商品
+        results.forEach(result => {
+          if (result.code === 0 && result.data.list) {
+            allGoods = allGoods.concat(result.data.list);
+          }
+        });
+      } else {
+        // 如果没有子分类，直接获取该分类的商品
+        const result = await SpuApi.getSpuPage({
+          categoryId: category.id,
+          pageNo: 1,
+          pageSize: 100,
+        });
+        
+        if (result.code === 0 && result.data.list) {
+          allGoods = result.data.list;
+        }
+      }
+      
+      return allGoods;
+    } catch (error) {
+      console.error('获取分类商品失败:', error);
+      return [];
     }
-  };
-
-  // 加载商品列表
-  async function getGoodsList() {
-    // 加载列表
-    state.loadStatus = 'loading';
-    const res = await SpuApi.getSpuPage({
-      categoryId: state.categoryList[state.activeMenu].id,
-      pageNo: state.pagination.pageNo,
-      pageSize: state.pagination.pageSize,
-    });
-    if (res.code !== 0) {
-      return;
-    }
-    // 合并列表
-    state.pagination.list = _.concat(state.pagination.list, res.data.list);
-    state.pagination.total = res.data.total;
-    state.loadStatus = state.pagination.list.length < state.pagination.total ? 'more' : 'noMore';
   }
 
-  // 加载更多商品
-  function loadMore() {
-    if (state.loadStatus === 'noMore') {
-      return;
+  // 加载所有分类的商品
+  async function loadAllCategoryGoods() {
+    state.loading = true;
+    
+    try {
+      // 并发加载所有分类的商品
+      const promises = state.categoryList.map(category => getCategoryGoods(category));
+      const results = await Promise.all(promises);
+      
+      state.allCategoryGoods = results;
+      state.allLoaded = true;
+      
+      // 等待DOM更新后计算各分类位置
+      nextTick(() => {
+        calculateCategoryPositions();
+      });
+    } catch (error) {
+      console.error('加载分类商品失败:', error);
+    } finally {
+      state.loading = false;
     }
-    state.pagination.pageNo++;
-    getGoodsList();
+  }
+
+  // 计算各分类在滚动容器中的位置
+  function calculateCategoryPositions() {
+    const query = uni.createSelectorQuery();
+    state.categoryPositions = [];
+    
+    state.categoryList.forEach((_, index) => {
+      query.select(`#category-${index}`).boundingClientRect((rect) => {
+        if (rect) {
+          state.categoryPositions[index] = rect.top - (statusBarHeight + 88); // 减去顶部偏移
+        }
+      });
+    });
+    
+    query.exec();
+  }
+
+  // 点击左侧分类菜单
+  function onMenuClick(index) {
+    if (state.loading) return;
+    
+    state.isManualScroll = true;
+    state.activeMenu = index;
+    
+    // 滚动到对应分类
+    const query = uni.createSelectorQuery();
+    query.select(`#category-${index}`).boundingClientRect((rect) => {
+      if (rect) {
+        state.rightScrollTop = rect.top - (statusBarHeight + 88) + state.rightScrollTop;
+      }
+      
+      // 恢复自动滚动检测
+      setTimeout(() => {
+        state.isManualScroll = false;
+      }, 500);
+    });
+    query.exec();
+    
+    // 左侧菜单也要滚动到可视区域
+    updateLeftMenuScroll(index);
+  }
+
+  // 更新左侧菜单滚动位置
+  function updateLeftMenuScroll(activeIndex) {
+    const menuItemHeight = 100; // 每个菜单项的高度
+    const containerHeight = pageHeight.value;
+    const targetPosition = activeIndex * menuItemHeight;
+    const offset = containerHeight / 2 - menuItemHeight / 2;
+    
+    leftScrollTop = Math.max(0, targetPosition - offset);
+  }
+
+  // 右侧滚动事件
+  function onRightScroll(event) {
+    if (state.isManualScroll) return; // 如果是手动点击触发的滚动，不处理
+    
+    const scrollTop = event.detail.scrollTop;
+    
+    // 根据滚动位置确定当前应该高亮哪个分类
+    let newActiveMenu = 0;
+    
+    for (let i = state.categoryPositions.length - 1; i >= 0; i--) {
+      if (scrollTop >= state.categoryPositions[i] - 50) { // 50px的偏移量
+        newActiveMenu = i;
+        break;
+      }
+    }
+    
+    if (newActiveMenu !== state.activeMenu) {
+      state.activeMenu = newActiveMenu;
+      updateLeftMenuScroll(newActiveMenu);
+    }
+  }
+
+  // 滚动到底部
+  function onScrollToLower() {
+    // 已经显示所有分类，无需加载更多
   }
 
   onLoad(async (params) => {
     await getList();
-
-    // 首页点击分类的处理：查找满足条件的分类
-    const foundCategory = state.categoryList.find((category) => category.id === Number(params.id));
-    // 如果找到则调用 onMenu 自动勾选相应分类，否则调用 onMenu(0) 勾选第一个分类
-    onMenu(foundCategory ? state.categoryList.indexOf(foundCategory) : 0);
+    
+    // 如果有指定分类ID，找到对应的分类索引
+    if (params.id) {
+      const foundCategory = state.categoryList.find((category) => category.id === Number(params.id));
+      if (foundCategory) {
+        state.activeMenu = state.categoryList.indexOf(foundCategory);
+      }
+    }
+    
+    // 加载所有分类的商品
+    await loadAllCategoryGoods();
   });
 
-  function handleScrollToLower() {
-    loadMore();
-  }
+  onReady(() => {
+    // 页面渲染完成后再次计算位置，确保准确性
+    setTimeout(() => {
+      calculateCategoryPositions();
+    }, 500);
+  });
 </script>
 
 <style lang="scss" scoped>
   .s-category {
-    :deep() {
+    .three-level-wrap {
       .side-menu-wrap {
-        width: 200rpx;
-        height: 100%;
-        padding-left: 12rpx;
-        background-color: #f6f6f6;
         position: fixed;
         left: 0;
-
+        width: 200rpx;
+        background: #f8f8f8;
+        z-index: 10;
+        
         .menu-item {
-          width: 100%;
-          height: 88rpx;
-          position: relative;
-          transition: all linear 0.2s;
-
-          .menu-title {
-            line-height: 32rpx;
-            font-size: 30rpx;
-            font-weight: 400;
-            color: #333;
-            margin-left: 28rpx;
-            position: relative;
-            z-index: 0;
-
-            &::before {
-              content: '';
-              width: 64rpx;
-              height: 12rpx;
-              background: linear-gradient(
-                90deg,
-                var(--ui-BG-Main-gradient),
-                var(--ui-BG-Main-light)
-              ) !important;
-              position: absolute;
-              left: -64rpx;
-              bottom: 0;
-              z-index: -1;
-              transition: all linear 0.2s;
+          height: 100rpx;
+          padding: 0 20rpx;
+          align-items: center;
+          border-bottom: 1rpx solid #eeeeee;
+          transition: all 0.3s ease;
+          
+          &.menu-item-active {
+            background: #fff;
+            border-right: 4rpx solid var(--ui-BG-Main);
+            
+            .menu-title {
+              color: var(--ui-BG-Main);
+              font-weight: bold;
             }
           }
-
-          &.menu-item-active {
-            background-color: #fff;
-            border-radius: 20rpx 0 0 20rpx;
-
-            &::before {
-              content: '';
-              position: absolute;
-              right: 0;
-              bottom: -20rpx;
-              width: 20rpx;
-              height: 20rpx;
-              background: radial-gradient(circle at 0 100%, transparent 20rpx, #fff 0);
-            }
-
-            &::after {
-              content: '';
-              position: absolute;
-              top: -20rpx;
-              right: 0;
-              width: 20rpx;
-              height: 20rpx;
-              background: radial-gradient(circle at 0% 0%, transparent 20rpx, #fff 0);
-            }
-
-            .menu-title {
-              font-weight: 600;
-
-              &::before {
-                left: 0;
-              }
-            }
+          
+          .menu-title {
+            font-size: 28rpx;
+            color: #666;
+            transition: all 0.3s ease;
           }
         }
       }
-
+      
       .goods-list-box {
-        background-color: #fff;
-        width: calc(100vw - 200rpx);
-        padding: 10px;
         margin-left: 200rpx;
+        
+        .category-section {
+          padding: 0 20rpx 40rpx;
+          
+          .category-title {
+            font-size: 32rpx;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            padding: 30rpx 0;
+            position: relative;
+            background: #fff;
+            sticky: true;
+            top: 0;
+            z-index: 5;
+            
+            &::before,
+            &::after {
+              content: '';
+              position: absolute;
+              top: 50%;
+              width: 60rpx;
+              height: 2rpx;
+              background: #ddd;
+            }
+            
+            &::before {
+              left: 20%;
+            }
+            
+            &::after {
+              right: 20%;
+            }
+          }
+          
+          .goods-list-container {
+            .goods-item-wrapper {
+              margin-bottom: 20rpx;
+              
+              .goods-card {
+                width: 100%;
+                border-radius: 10rpx;
+                overflow: hidden;
+                box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+                background: #fff;
+              }
+            }
+            
+            .goods-item-wrapper:last-child {
+              margin-bottom: 0;
+            }
+          }
+          
+          .empty-category {
+            padding: 60rpx 0;
+            text-align: center;
+            
+            .empty-text {
+              font-size: 28rpx;
+              color: #999;
+            }
+          }
+        }
+        
+        .load-more-tip {
+          padding: 40rpx 0;
+          text-align: center;
+          font-size: 28rpx;
+          color: #999;
+        }
       }
-
-      .banner-img {
-        width: calc(100vw - 130px);
-        border-radius: 5px;
-        margin-bottom: 20rpx;
+      
+      .loading-container,
+      .empty-container {
+        margin-left: 200rpx;
+        padding: 100rpx 20rpx;
+        text-align: center;
+        font-size: 28rpx;
+        color: #999;
       }
     }
   }
