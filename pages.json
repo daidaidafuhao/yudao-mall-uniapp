@@ -6,9 +6,8 @@
 			"^su-(.*)": "@/sheep/ui/su-$1/su-$1.vue"
 		}
 	},
-	"pages": [{
+	"pages": [		{
 			"path": "pages/index/index",
-			"aliasPath": "/",
 			"style": {
 				"navigationBarTitleText": "首页",
 				"enablePullDownRefresh": true

@@ -195,9 +195,10 @@
 
 <style lang="scss" scoped>
   .u-tabbar {
-    display: flex;
+    display: flex !important;
     flex: 1;
     justify-content: center;
+    visibility: visible !important;
 
     &__content {
       display: flex;
@@ -218,10 +219,13 @@
     }
 
     &--fixed {
-      position: fixed;
-      bottom: -1px;
-      left: 0;
-      right: 0;
+      position: fixed !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      z-index: 9999 !important;
+      display: block !important;
+      visibility: visible !important;
     }
   }
 </style>

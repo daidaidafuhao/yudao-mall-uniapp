@@ -5,7 +5,9 @@
   onLaunch(() => {
     // 隐藏原生导航栏 使用自定义底部导航
     uni.hideTabBar({
-      fail: () => {},
+      fail: () => {
+        console.log('hideTabBar failed');
+      },
     });
 
     // 加载Shopro底层依赖
@@ -29,4 +31,10 @@
 
 <style lang="scss">
   @import '@/sheep/scss/index.scss';
+  
+  /* 全局隐藏原生tabbar */
+  .uni-tabbar {
+    display: none !important;
+    visibility: hidden !important;
+  }
 </style>

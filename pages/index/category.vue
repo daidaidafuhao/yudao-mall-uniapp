@@ -48,7 +48,7 @@
                     :data="item"
                     :topRadius="10"
                     :bottomRadius="10"
-                    @click="sheep.$router.go('/pages/goods/index', { id: item.id })"
+                    @click="onGoodsClick(item)"
                   />
                 </view>
               </view>
@@ -77,6 +77,16 @@
         </view>
       </view>
     </view>
+
+    <!-- 商品SKU选择弹框 -->
+    <s-select-sku
+      v-if="state.selectedGoods"
+      :show="state.showSkuModal"
+      :goodsInfo="state.selectedGoods"
+      @close="closeSkuModal"
+      @addCart="onAddCart"
+      @buy="onBuyNow"
+    />
   </s-layout>
 </template>
 
@@ -98,6 +108,9 @@
     rightScrollTop: 0,
     categoryPositions: [], // 记录每个分类在滚动容器中的位置
     isManualScroll: false, // 是否为手动点击分类触发的滚动
+    // 商品选择弹框相关
+    showSkuModal: false,
+    selectedGoods: null,
   });
 
   let leftScrollTop = 0; // 左侧菜单滚动位置
@@ -261,13 +274,18 @@
 
   onLoad(async (params) => {
     await getList();
-    
+
     // 如果有指定分类ID，找到对应的分类索引
     if (params.id) {
-      const foundCategory = state.categoryList.find((category) => category.id === Number(params.id));
+    const foundCategory = state.categoryList.find((category) => category.id === Number(params.id));
       if (foundCategory) {
         state.activeMenu = state.categoryList.indexOf(foundCategory);
       }
+    }
+    
+    // 如果是直接访问分类页面（不是从主页按钮进入），清除配送方式
+    if (!params.fromHome) {
+      sheep.$store('app').clearDeliveryMode();
     }
     
     // 加载所有分类的商品
@@ -280,6 +298,56 @@
       calculateCategoryPositions();
     }, 500);
   });
+
+  // 商品点击处理
+  async function onGoodsClick(goods) {
+    try {
+      // 获取商品详情信息
+      const { code, data } = await SpuApi.getSpuDetail(goods.id);
+      if (code === 0) {
+        state.selectedGoods = data;
+        state.showSkuModal = true;
+      }
+    } catch (error) {
+      console.error('获取商品详情失败:', error);
+      sheep.$helper.toast('获取商品信息失败');
+    }
+  }
+
+  // 关闭SKU选择弹框
+  function closeSkuModal() {
+    state.showSkuModal = false;
+    state.selectedGoods = null;
+  }
+
+  // 加入购物车
+  function onAddCart(sku) {
+    if (!sku.id) {
+      sheep.$helper.toast('请选择商品规格');
+      return;
+    }
+    sheep.$store('cart').add(sku);
+    closeSkuModal();
+  }
+
+  // 立即购买
+  function onBuyNow(sku) {
+    if (!sku.id) {
+      sheep.$helper.toast('请选择商品规格');
+      return;
+    }
+    closeSkuModal();
+    // 跳转到订单确认页面
+    sheep.$router.go('/pages/order/confirm', {
+      data: JSON.stringify({
+        items: [{
+          skuId: sku.id,
+          count: sku.goods_num || 1,
+          categoryId: state.selectedGoods?.categoryId,
+        }]
+      })
+    });
+  }
 </script>
 
 <style lang="scss" scoped>
@@ -291,7 +359,7 @@
         width: 200rpx;
         background: #f8f8f8;
         z-index: 10;
-        
+
         .menu-item {
           height: 100rpx;
           padding: 0 20rpx;
@@ -308,7 +376,7 @@
               font-weight: bold;
             }
           }
-          
+
           .menu-title {
             font-size: 28rpx;
             color: #666;
@@ -334,7 +402,7 @@
             sticky: true;
             top: 0;
             z-index: 5;
-            
+
             &::before,
             &::after {
               content: '';
@@ -344,11 +412,11 @@
               height: 2rpx;
               background: #ddd;
             }
-            
+
             &::before {
               left: 20%;
             }
-            
+
             &::after {
               right: 20%;
             }

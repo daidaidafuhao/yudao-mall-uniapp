@@ -1,5 +1,5 @@
 <template>
-  <view class="u-page__item" v-if="tabbar?.items?.length > 0">
+  <view class="u-page__item" v-if="showTabbar">
     <su-tabbar
       :value="path"
       :fixed="true"
@@ -34,12 +34,19 @@
 </template>
 
 <script setup>
-  import { computed, unref } from 'vue';
+  import { computed, unref, ref, watchEffect } from 'vue';
   import sheep from '@/sheep';
   import SuTabbar from '@/sheep/ui/su-tabbar/su-tabbar.vue';
 
   const tabbar = computed(() => {
     return sheep.$store('app').template.basic?.tabbar;
+  });
+
+  const showTabbar = ref(false);
+
+  watchEffect(() => {
+    const hasTabbarData = tabbar.value && tabbar.value.items && tabbar.value.items.length > 0;
+    showTabbar.value = hasTabbarData;
   });
 
   const tabbarStyle = computed(() => {
@@ -63,8 +70,10 @@
   };
 
   const props = defineProps({
-    path: String,
-    default: '',
+    path: {
+      type: String,
+      default: '',
+    },
   });
 </script>
 

@@ -74,7 +74,7 @@
 </template>
 
 <script setup>
-  import { computed } from 'vue';
+  import { computed, onMounted } from 'vue';
   import sheep from '@/sheep';
   import { isEmpty } from 'lodash-es';
 
@@ -134,6 +134,19 @@
   const switchDeliveryType = (type) => {
     state.value.deliveryType = type;
   };
+  
+  // 根据app store中的配送方式设置初始值
+  onMounted(() => {
+    const deliveryMode = sheep.$store('app').getDeliveryMode();
+    if (deliveryMode === 'pickup') {
+      // 自取模式：强制选择门店自提 (使用原有的deliveryType: 2)
+      state.value.deliveryType = 2;
+    } else if (deliveryMode === 'delivery') {
+      // 外卖模式：强制选择快递配送 (使用原有的deliveryType: 1)
+      state.value.deliveryType = 1;
+    }
+    // 如果deliveryMode为null，则显示所有选项（默认行为）
+  });
 </script>
 
 <style scoped lang="scss">
@@ -279,4 +292,6 @@
     width: 100%;
     margin: 0 auto;
   }
+  
+
 </style>

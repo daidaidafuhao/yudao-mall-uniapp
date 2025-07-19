@@ -1,5 +1,5 @@
 <template>
-  <s-layout title="首页" tabbar="/pages/index/index" :bgStyle="bgStyle">
+  <s-layout title="首页" navbar="custom" tabbar="/pages/index/index" :bgStyle="bgStyle" :navbarStyle="navbarStyle">
     <!-- 主要内容区域 -->
     <view class="home-container">
       <!-- 顶部背景装饰区域 -->
@@ -24,16 +24,11 @@
       <!-- 用户信息卡片 -->
       <view class="user-card" v-if="userInfo.nickname">
         <view class="user-info">
-          <!-- 头像或默认图标 -->
-          <view class="user-avatar">
-            <image 
-              v-if="!avatarError && userInfo.avatar"
-              :src="userInfo.avatar" 
-              mode="aspectFill"
-              @error="onAvatarError"
-            />
-            <text v-else class="default-avatar-icon">👤</text>
-          </view>
+          <image 
+            class="user-avatar" 
+            :src="userInfo.avatar || defaultAvatar" 
+            mode="aspectFill"
+          />
           <view class="user-details">
             <view class="user-name">{{ userInfo.nickname }}</view>
             <view class="user-level">美食会员</view>
@@ -50,20 +45,20 @@
       <!-- 主要功能按钮 -->
       <view class="main-actions">
         <view class="action-row">
-          <!-- 自取按钮 -->
-          <view class="action-btn dine-in-btn" @tap="onPickup">
+          <!-- 堂食按钮 -->
+          <view class="action-btn dine-in-btn" @tap="onDineIn">
             <view class="btn-icon">
-              <text class="icon-text">🏪</text>
+              <image src="/static/images/dine-in-icon.png" mode="aspectFit" />
             </view>
-            <text class="btn-text">自取</text>
+            <text class="btn-text">堂食</text>
           </view>
           
-          <!-- 外卖按钮 -->
-          <view class="action-btn takeout-btn" @tap="onDelivery">
+          <!-- 外送按钮 -->
+          <view class="action-btn takeout-btn" @tap="onTakeout">
             <view class="btn-icon">
-              <text class="icon-text">🚁</text>
+              <image src="/static/images/takeout-icon.png" mode="aspectFit" />
             </view>
-            <text class="btn-text">外卖</text>
+            <text class="btn-text">外送</text>
           </view>
         </view>
       </view>
@@ -73,28 +68,51 @@
         <view class="menu-row">
           <view class="menu-item" @tap="onMenuTap('/pages/order/list')">
             <view class="menu-icon order-icon">
-              <text class="icon-text">📦</text>
+              <text class="icon-text">📋</text>
             </view>
-            <text class="menu-text">订单</text>
+            <text class="menu-text">订单记录</text>
           </view>
           
-          <view class="menu-item" @tap="onMenuTap('/pages/user/address/list')">
-            <view class="menu-icon address-icon">
-              <text class="icon-text">📍</text>
+          <view class="menu-item" @tap="onMenuTap('/pages/coupon/list')">
+            <view class="menu-icon coupon-icon">
+              <text class="icon-text">🎫</text>
             </view>
-            <text class="menu-text">地址</text>
+            <text class="menu-text">优惠券库</text>
           </view>
           
-          <view class="menu-item" @tap="onMenuTap('/pages/index/user')">
-            <view class="menu-icon user-icon">
-              <text class="icon-text">👤</text>
+          <view class="menu-item" @tap="onMenuTap('/pages/user/integral')">
+            <view class="menu-icon integral-icon">
+              <text class="icon-text">🎯</text>
             </view>
-            <text class="menu-text">我的</text>
+            <text class="menu-text">积分明细</text>
           </view>
         </view>
       </view>
 
-
+      <!-- 推荐商品区域 -->
+      <view class="recommended-section">
+        <view class="section-title">
+          <text class="title-text">今日推荐</text>
+          <text class="title-subtitle">为您精选</text>
+        </view>
+        
+        <scroll-view class="goods-scroll" scroll-x show-scrollbar="false">
+          <view class="goods-list">
+            <view 
+              class="goods-item" 
+              v-for="item in recommendedGoods" 
+              :key="item.id"
+              @tap="onGoodsTap(item.id)"
+            >
+              <image class="goods-image" :src="item.image" mode="aspectFill" />
+              <view class="goods-info">
+                <text class="goods-name">{{ item.name }}</text>
+                <text class="goods-price">¥{{ item.price }}</text>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
     </view>
   </s-layout>
 </template>
@@ -117,32 +135,56 @@ const navbarStyle = {
   color: '#333'
 };
 
+// 状态数据
+const state = reactive({
+  recommendedGoods: [
+    {
+      id: 1,
+      name: '招牌牛肉面',
+      price: '28.00',
+      image: '/static/images/beef-noodles.jpg'
+    },
+    {
+      id: 2,
+      name: '麻辣香锅',
+      price: '35.00',
+      image: '/static/images/spicy-hotpot.jpg'
+    },
+    {
+      id: 3,
+      name: '宫保鸡丁',
+      price: '26.00',
+      image: '/static/images/kungpao-chicken.jpg'
+    }
+  ]
+});
+
 // 用户信息
 const userInfo = computed(() => sheep.$store('user').userInfo);
-const avatarError = reactive({ value: false });
+const defaultAvatar = '/static/images/default-avatar.png';
+const recommendedGoods = computed(() => state.recommendedGoods);
 
-// 头像加载失败处理
-const onAvatarError = () => {
-  avatarError.value = true;
+// 堂食功能
+const onDineIn = () => {
+  uni.showToast({
+    title: '堂食功能开发中',
+    icon: 'none'
+  });
 };
 
-// 自取功能
-const onPickup = () => {
-  // 设置配送方式为自取
-  sheep.$store('app').setDeliveryMode('pickup');
-  sheep.$router.go('/pages/index/category', { fromHome: true });
-};
-
-// 外卖功能 
-const onDelivery = () => {
-  // 设置配送方式为外卖
-  sheep.$store('app').setDeliveryMode('delivery');
-  sheep.$router.go('/pages/index/category', { fromHome: true });
+// 外送功能
+const onTakeout = () => {
+  sheep.$router.go('/pages/index/category');
 };
 
 // 菜单点击
 const onMenuTap = (url) => {
   sheep.$router.go(url);
+};
+
+// 商品点击
+const onGoodsTap = (goodsId) => {
+  sheep.$router.go('/pages/goods/index', { id: goodsId });
 };
 
 onLoad(() => {
@@ -153,11 +195,10 @@ onLoad(() => {
 
 <style lang="scss" scoped>
 .home-container {
-  min-height: calc(100vh - 50px); /* 给tabbar留出空间 */
+  min-height: 100vh;
   background: linear-gradient(180deg, #FFF5E6 0%, #FFFFFF 50%);
   position: relative;
   overflow: hidden;
-  padding-bottom: 80rpx; /* 额外的底部padding */
 }
 
 // 顶部区域
@@ -234,21 +275,6 @@ onLoad(() => {
       height: 80rpx;
       border-radius: 40rpx;
       margin-right: 24rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #f5f5f5;
-      
-      image {
-        width: 100%;
-        height: 100%;
-        border-radius: 40rpx;
-      }
-      
-      .default-avatar-icon {
-        font-size: 40rpx;
-        color: #999;
-      }
     }
     
     .user-details {
@@ -325,12 +351,11 @@ onLoad(() => {
         width: 60rpx;
         height: 60rpx;
         margin-bottom: 16rpx;
-        display: flex;
-        align-items: center;
-        justify-content: center;
         
-        .icon-text {
-          font-size: 48rpx;
+        image {
+          width: 100%;
+          height: 100%;
+          filter: brightness(0) invert(1);
         }
       }
       
@@ -379,11 +404,11 @@ onLoad(() => {
           background: linear-gradient(135deg, #E1F5FE 0%, #B3E5FC 100%);
         }
         
-        &.address-icon {
-          background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
+        &.coupon-icon {
+          background: linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%);
         }
         
-        &.user-icon {
+        &.integral-icon {
           background: linear-gradient(135deg, #E8F5E8 0%, #C8E6C9 100%);
         }
         
@@ -400,11 +425,68 @@ onLoad(() => {
   }
 }
 
-
-
-// 隐藏原生tabbar
-:deep(.uni-tabbar) {
-  display: none !important;
+// 推荐商品区域
+.recommended-section {
+  margin: 0 40rpx;
+  
+  .section-title {
+    margin-bottom: 32rpx;
+    
+    .title-text {
+      font-size: 36rpx;
+      font-weight: 600;
+      color: #333;
+      margin-right: 16rpx;
+    }
+    
+    .title-subtitle {
+      font-size: 24rpx;
+      color: #999;
+    }
+  }
+  
+  .goods-scroll {
+    white-space: nowrap;
+    
+    .goods-list {
+      display: inline-flex;
+      gap: 24rpx;
+      padding-bottom: 40rpx;
+      
+      .goods-item {
+        width: 200rpx;
+        background: #FFFFFF;
+        border-radius: 16rpx;
+        overflow: hidden;
+        box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);
+        
+        .goods-image {
+          width: 100%;
+          height: 140rpx;
+        }
+        
+        .goods-info {
+          padding: 16rpx;
+          
+          .goods-name {
+            font-size: 24rpx;
+            color: #333;
+            display: block;
+            margin-bottom: 8rpx;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          
+          .goods-price {
+            font-size: 28rpx;
+            font-weight: 600;
+            color: #FF6B35;
+          }
+        }
+      }
+    }
+  }
 }
 
 // 响应式适配

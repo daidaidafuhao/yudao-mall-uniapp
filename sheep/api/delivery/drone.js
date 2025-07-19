@@ -9,6 +9,21 @@ const DroneApi = {
       params,
     });
   },
+  
+  // 根据订单号查询无人机信息
+  getDroneByOrder: (orderNo) => {
+    return request({
+      url: 'app/drone/get-by-order',
+      method: 'GET',
+      params: {
+        orderNo,
+      },
+      custom: {
+        showLoading: false,
+        showError: false,
+      },
+    });
+  },
 };
 
 export default DroneApi; 

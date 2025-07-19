@@ -358,14 +358,14 @@
             
             <!-- 销量信息 -->
             <view class="lg-sales-text">{{ salesAndStock }}</view>
-          </view>
-          
+      </view>
+
           <!-- 购买按钮 -->
-          <slot name="cart">
+      <slot name="cart">
             <view class="lg-buy-box ss-flex ss-col-center ss-row-center" v-if="buttonShow">
               购买
             </view>
-          </slot>
+      </slot>
         </view>
       </view>
     </view>

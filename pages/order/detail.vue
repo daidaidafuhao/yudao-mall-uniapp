@@ -61,6 +61,62 @@
       </view>
     </view>
 
+    <!-- 无人机配送实时跟踪 -->
+    <view 
+      class="drone-tracking-box" 
+      v-if="state.orderInfo.status === 20 && state.droneInfo"
+    >
+      <view class="tracking-title">
+        <text class="title-text">无人机配送中</text>
+        <text class="drone-name">{{ state.droneInfo.droneName }}</text>
+      </view>
+      
+      <!-- 地图组件 -->
+      <view class="map-container">
+        <map
+          :id="mapId"
+          class="delivery-map"
+          :longitude="state.droneInfo.longitude"
+          :latitude="state.droneInfo.latitude"
+          :scale="15"
+          :markers="state.mapMarkers"
+          :polyline="state.mapPolyline"
+          show-location
+        >
+        </map>
+      </view>
+      
+      <!-- 无人机状态信息 -->
+      <view class="drone-status">
+        <view class="status-row">
+          <view class="status-item">
+            <text class="status-label">状态：</text>
+            <text class="status-value" :class="getDroneStatusClass()">{{ state.droneInfo.statusDesc }}</text>
+          </view>
+          <view class="status-item">
+            <text class="status-label">电量：</text>
+            <text class="status-value">{{ state.droneInfo.batteryLevel }}%</text>
+          </view>
+        </view>
+        <view class="status-row">
+          <view class="status-item">
+            <text class="status-label">速度：</text>
+            <text class="status-value">{{ state.droneInfo.speed }} m/s</text>
+          </view>
+          <view class="status-item">
+            <text class="status-label">高度：</text>
+            <text class="status-value">{{ state.droneInfo.altitude }} m</text>
+          </view>
+        </view>
+        <view class="status-row" v-if="state.droneInfo.estimatedArrivalTime">
+          <view class="status-item full-width">
+            <text class="status-label">预计到达：</text>
+            <text class="status-value">{{ formatDateTime(state.droneInfo.estimatedArrivalTime) }}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
     <view
       class="detail-goods"
       :style="[{ marginTop: state.orderInfo.receiverAreaId > 0 ? '0' : '-40rpx' }]"
@@ -258,7 +314,7 @@
 
 <script setup>
   import sheep from '@/sheep';
-  import { onLoad, onShow } from '@dcloudio/uni-app';
+  import { onLoad, onShow, onUnload, onHide } from '@dcloudio/uni-app';
   import { reactive, ref } from 'vue';
   import { isEmpty } from 'lodash-es';
   import {
@@ -269,6 +325,7 @@
   } from '@/sheep/hooks/useGoods';
   import OrderApi from '@/sheep/api/trade/order';
   import DeliveryApi from '@/sheep/api/trade/delivery';
+  import DroneApi from '@/sheep/api/delivery/drone';
   import PickUpVerify from '@/pages/order/pickUpVerify.vue';
 
   const statusBarHeight = sheep.$platform.device.statusBarHeight * 2;
@@ -278,7 +335,13 @@
     orderInfo: {},
     merchantTradeNo: '', // 商户订单号
     comeinType: '', // 进入订单详情的来源类型
+    droneInfo: null, // 无人机信息
+    mapMarkers: [], // 地图标记
+    mapPolyline: [], // 地图路线
   });
+
+  const mapId = 'droneMap' + Date.now(); // 地图ID
+  let droneUpdateTimer = null; // 无人机信息更新定时器
 
   // ========== 门店自提（核销） ==========
   const systemStore = ref({}); // 门店信息
@@ -398,6 +461,115 @@
     });
   }
 
+  // 获取无人机信息
+  async function getDroneInfo(orderNo) {
+    try {
+      const { code, data } = await DroneApi.getDroneByOrder(orderNo);
+      if (code === 0 && data) {
+        state.droneInfo = data;
+        updateMapMarkers();
+        return true;
+      }
+    } catch (error) {
+      console.error('获取无人机信息失败:', error);
+    }
+    return false;
+  }
+
+  // 更新地图标记
+  function updateMapMarkers() {
+    if (!state.droneInfo) return;
+
+    state.mapMarkers = [
+      // 无人机当前位置
+      {
+        id: 'drone',
+        latitude: state.droneInfo.latitude,
+        longitude: state.droneInfo.longitude,
+        iconPath: '/static/drone-icon.png',
+        width: 40,
+        height: 40,
+        title: state.droneInfo.droneName,
+        callout: {
+          content: `${state.droneInfo.statusDesc} | 电量: ${state.droneInfo.batteryLevel}%`,
+          fontSize: 12,
+          borderRadius: 5,
+          padding: 5,
+          display: 'ALWAYS'
+        }
+      }
+    ];
+
+    // 如果有目标地址，添加目标标记
+    if (state.orderInfo.receiverAreaId > 0) {
+      // 这里需要将收货地址转换为经纬度坐标
+      // 暂时使用示例坐标，实际项目中需要地址解析服务
+      state.mapMarkers.push({
+        id: 'destination',
+        latitude: state.droneInfo.latitude + 0.01, // 示例偏移
+        longitude: state.droneInfo.longitude + 0.01, // 示例偏移
+        iconPath: '/static/location-icon.png',
+        width: 30,
+        height: 30,
+        title: '收货地址',
+        callout: {
+          content: state.orderInfo.receiverAreaName,
+          fontSize: 12,
+          borderRadius: 5,
+          padding: 5
+        }
+      });
+    }
+  }
+
+  // 获取无人机状态对应的样式类
+  function getDroneStatusClass() {
+    if (!state.droneInfo) return '';
+    
+    switch (state.droneInfo.status) {
+      case 1: // 飞行中
+        return 'success';
+      case 2: // 返航中
+        return 'warning';
+      case 5: // 故障
+      case 6: // 离线
+        return 'danger';
+      default:
+        return '';
+    }
+  }
+
+  // 格式化时间
+  function formatDateTime(dateTime) {
+    if (!dateTime) return '';
+    return sheep.$helper.timeFormat(dateTime, 'yyyy-mm-dd hh:MM:ss');
+  }
+
+  // 开始无人机信息的实时更新
+  function startDroneTracking() {
+    if (!state.orderInfo.no) return;
+
+    // 立即获取一次无人机信息
+    getDroneInfo(state.orderInfo.no);
+
+    // 每10秒更新一次无人机信息
+    droneUpdateTimer = setInterval(() => {
+      if (state.orderInfo.status === 20) { // 只在运输中状态更新
+        getDroneInfo(state.orderInfo.no);
+      } else {
+        stopDroneTracking();
+      }
+    }, 10000);
+  }
+
+  // 停止无人机信息更新
+  function stopDroneTracking() {
+    if (droneUpdateTimer) {
+      clearInterval(droneUpdateTimer);
+      droneUpdateTimer = null;
+    }
+  }
+
   const pickUpVerifyRef = ref();
 
   async function getOrderDetail(id) {
@@ -422,6 +594,13 @@
       if (state.orderInfo.deliveryType === 2 && state.orderInfo.payStatus) {
         pickUpVerifyRef.value && pickUpVerifyRef.value.markCode(res.data.pickUpVerifyCode);
       }
+      
+      // 如果订单状态为运输中(20)，开始无人机跟踪
+      if (state.orderInfo.status === 20) {
+        startDroneTracking();
+      } else {
+        stopDroneTracking();
+      }
     } else {
       sheep.$router.back();
     }
@@ -443,6 +622,16 @@
       state.merchantTradeNo = options.merchant_trade_no;
     }
     state.orderInfo.id = id;
+  });
+
+  // 页面隐藏时停止定时器
+  onHide(() => {
+    stopDroneTracking();
+  });
+
+  // 页面卸载时清理定时器
+  onUnload(() => {
+    stopDroneTracking();
   });
 </script>
 
@@ -497,6 +686,86 @@
       font-weight: 500;
       color: rgba(153, 153, 153, 1);
       margin-top: 20rpx;
+    }
+  }
+
+  .drone-tracking-box {
+    background-color: #fff;
+    border-radius: 10rpx;
+    margin: 0 20rpx 20rpx 20rpx;
+    padding: 20rpx;
+    box-sizing: border-box;
+
+    .tracking-title {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20rpx;
+
+      .title-text {
+        font-size: 30rpx;
+        font-weight: 500;
+        color: rgba(51, 51, 51, 1);
+        margin-right: 10rpx;
+      }
+
+      .drone-name {
+        font-size: 30rpx;
+        font-weight: 500;
+        color: var(--ui-BG-Main);
+      }
+    }
+
+    .map-container {
+      width: 100%;
+      height: 300rpx;
+      border-radius: 8rpx;
+      overflow: hidden;
+      margin-bottom: 20rpx;
+
+      .delivery-map {
+        width: 100%;
+        height: 100%;
+      }
+    }
+
+    .drone-status {
+      .status-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10rpx;
+
+        .status-item {
+          display: flex;
+          align-items: center;
+
+          .status-label {
+            font-size: 28rpx;
+            color: #999;
+            margin-right: 10rpx;
+          }
+
+          .status-value {
+            font-size: 28rpx;
+            color: #333;
+            font-family: OPPOSANS;
+
+            &.warning {
+              color: #ff9800;
+            }
+            &.danger {
+              color: #f44336;
+            }
+            &.success {
+              color: #4caf50;
+            }
+          }
+
+          &.full-width {
+            flex: 1;
+            justify-content: flex-start;
+          }
+        }
+      }
     }
   }
 

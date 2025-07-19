@@ -45,6 +45,7 @@ const app = defineStore({
     },
     shareInfo: {}, // 全局分享信息
     has_wechat_trade_managed: 0, // 小程序发货信息管理  0 没有 || 1 有
+    deliveryMode: null, // 配送方式：'pickup' 自取, 'delivery' 外卖, null 未选择
   }),
   actions: {
     // 获取Shopro应用配置和模板
@@ -105,8 +106,22 @@ const app = defineStore({
         }
         return Promise.resolve(true);
       } else {
-        $router.error('InitError', res.msg || '加载失败');
       }
+    },
+    
+    // 设置配送方式
+    setDeliveryMode(mode) {
+      this.deliveryMode = mode;
+    },
+    
+    // 获取配送方式
+    getDeliveryMode() {
+      return this.deliveryMode;
+    },
+    
+    // 清除配送方式
+    clearDeliveryMode() {
+      this.deliveryMode = null;
     },
   },
   persist: {
@@ -120,33 +135,149 @@ const app = defineStore({
 });
 
 const adaptTemplate = async (appTemplate, templateId) => {
-  const { data: diyTemplate } = templateId
-    ? // 查询指定模板，一般是预览时使用
-      await DiyApi.getDiyTemplate(templateId)
-    : await DiyApi.getUsedDiyTemplate();
-  // 模板不存在
-  if (!diyTemplate) {
-    $router.error('TemplateError');
-    return;
-  }
-
-  const tabBar = diyTemplate?.property?.tabBar;
-  if (tabBar) {
-    appTemplate.basic.tabbar = tabBar;
-    // TODO 商城装修没有对 tabBar 进行角标配置，测试角标需打开以下注释
-    // appTemplate.basic.tabbar.items.forEach((tabBar) => {
-    //   tabBar.dot = false
-    //   tabBar.badge = 100
-    // })
-    // appTemplate.basic.tabbar.badgeStyle = {
-    //   backgroundColor: '#882222',
-    // }
-    if (tabBar?.theme) {
-      appTemplate.basic.theme = tabBar?.theme;
+  try {
+    const { data: diyTemplate } = templateId
+      ? // 查询指定模板，一般是预览时使用
+        await DiyApi.getDiyTemplate(templateId)
+      : await DiyApi.getUsedDiyTemplate();
+    
+    console.log('装修模板数据:', diyTemplate);
+    
+    // 模板不存在
+    if (!diyTemplate) {
+      console.warn('未找到装修模板，使用默认配置');
+      // 设置默认 tabbar 配置
+      appTemplate.basic.tabbar = {
+        style: {
+          bgColor: '#ffffff',
+          color: '#515151',
+          activeColor: '#ff6b35'
+        },
+        items: [
+          {
+            text: '首页',
+            url: '/pages/index/index',
+            iconUrl: 'https://static.iocoder.cn/images/common/wechat_index.png',
+            activeIconUrl: 'https://static.iocoder.cn/images/common/wechat_index_active.png'
+          },
+          {
+            text: '分类',
+            url: '/pages/index/category',
+            iconUrl: 'https://static.iocoder.cn/images/common/wechat_category.png',
+            activeIconUrl: 'https://static.iocoder.cn/images/common/wechat_category_active.png'
+          },
+          {
+            text: '购物车',
+            url: '/pages/index/cart',
+            iconUrl: 'https://static.iocoder.cn/images/common/wechat_cart.png',
+            activeIconUrl: 'https://static.iocoder.cn/images/common/wechat_cart_active.png'
+          },
+          {
+            text: '我的',
+            url: '/pages/index/user',
+            iconUrl: 'https://static.iocoder.cn/images/common/wechat_user.png',
+            activeIconUrl: 'https://static.iocoder.cn/images/common/wechat_user_active.png'
+          }
+        ]
+      };
+      return;
     }
+
+    const tabBar = diyTemplate?.property?.tabBar;
+    console.log('tabBar配置:', tabBar);
+    
+    if (tabBar) {
+      appTemplate.basic.tabbar = tabBar;
+      // TODO 商城装修没有对 tabBar 进行角标配置，测试角标需打开以下注释
+      // appTemplate.basic.tabbar.items.forEach((tabBar) => {
+      //   tabBar.dot = false
+      //   tabBar.badge = 100
+      // })
+      // appTemplate.basic.tabbar.badgeStyle = {
+      //   backgroundColor: '#882222',
+      // }
+      if (tabBar?.theme) {
+        appTemplate.basic.theme = tabBar?.theme;
+      }
+    } else {
+      console.warn('模板中未找到tabBar配置，使用默认配置');
+      // 设置默认 tabbar 配置
+      appTemplate.basic.tabbar = {
+        style: {
+          bgColor: '#ffffff',
+          color: '#515151',
+          activeColor: '#ff6b35'
+        },
+        items: [
+          {
+            text: '首页',
+            url: '/pages/index/index',
+            iconUrl: 'https://static.iocoder.cn/images/common/wechat_index.png',
+            activeIconUrl: 'https://static.iocoder.cn/images/common/wechat_index_active.png'
+          },
+          {
+            text: '分类',
+            url: '/pages/index/category',
+            iconUrl: 'https://static.iocoder.cn/images/common/wechat_category.png',
+            activeIconUrl: 'https://static.iocoder.cn/images/common/wechat_category_active.png'
+          },
+          {
+            text: '购物车',
+            url: '/pages/index/cart',
+            iconUrl: 'https://static.iocoder.cn/images/common/wechat_cart.png',
+            activeIconUrl: 'https://static.iocoder.cn/images/common/wechat_cart_active.png'
+          },
+          {
+            text: '我的',
+            url: '/pages/index/user',
+            iconUrl: 'https://static.iocoder.cn/images/common/wechat_user.png',
+            activeIconUrl: 'https://static.iocoder.cn/images/common/wechat_user_active.png'
+          }
+        ]
+      };
+    }
+    
+    appTemplate.home = diyTemplate?.home;
+    appTemplate.user = diyTemplate?.user;
+    
+    console.log('最终tabbar配置:', appTemplate.basic.tabbar);
+  } catch (error) {
+    console.error('加载装修模板失败:', error);
+    // 设置默认 tabbar 配置
+    appTemplate.basic.tabbar = {
+      style: {
+        bgColor: '#ffffff',
+        color: '#515151',
+        activeColor: '#ff6b35'
+      },
+      items: [
+        {
+          text: '首页',
+          url: '/pages/index/index',
+          iconUrl: 'https://static.iocoder.cn/images/common/wechat_index.png',
+          activeIconUrl: 'https://static.iocoder.cn/images/common/wechat_index_active.png'
+        },
+        {
+          text: '分类',
+          url: '/pages/index/category',
+          iconUrl: 'https://static.iocoder.cn/images/common/wechat_category.png',
+          activeIconUrl: 'https://static.iocoder.cn/images/common/wechat_category_active.png'
+        },
+        {
+          text: '购物车',
+          url: '/pages/index/cart',
+          iconUrl: 'https://static.iocoder.cn/images/common/wechat_cart.png',
+          activeIconUrl: 'https://static.iocoder.cn/images/common/wechat_cart_active.png'
+        },
+        {
+          text: '我的',
+          url: '/pages/index/user',
+          iconUrl: 'https://static.iocoder.cn/images/common/wechat_user.png',
+          activeIconUrl: 'https://static.iocoder.cn/images/common/wechat_user_active.png'
+        }
+      ]
+    };
   }
-  appTemplate.home = diyTemplate?.home;
-  appTemplate.user = diyTemplate?.user;
 };
 
 export default app;

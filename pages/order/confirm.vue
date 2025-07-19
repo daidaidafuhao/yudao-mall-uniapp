@@ -320,6 +320,9 @@
       sheep.$store('cart').getList();
     }
 
+    // 清除配送方式，为下次购买做准备
+    sheep.$store('app').clearDeliveryMode();
+
     // 跳转到支付页面
     if (data.payOrderId && data.payOrderId > 0) {
       sheep.$router.redirect('/pages/pay/index', {
