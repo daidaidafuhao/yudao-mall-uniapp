@@ -209,11 +209,12 @@
     "usingComponents": {},
     "permission": {
       "scope.userLocation": {
-        "desc": "您的位置信息将用于查找附近的无人机柜"
+        "desc": "您的位置信息将用于查找附近的无人机柜和在地图上选择位置"
       }
     },
     "requiredPrivateInfos": [
       "chooseAddress",
+      "chooseLocation",
       "getLocation",
       "onLocationChange",
       "startLocationUpdate",

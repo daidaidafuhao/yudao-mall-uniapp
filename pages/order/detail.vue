@@ -74,20 +74,41 @@
       <!-- 地图组件 -->
       <view class="map-container">
         <map
+          v-if="isValidLocation"
           :id="mapId"
           class="delivery-map"
-          :longitude="state.droneInfo.longitude"
-          :latitude="state.droneInfo.latitude"
-          :scale="15"
+          :longitude="state.mapCenter.longitude"
+          :latitude="state.mapCenter.latitude"
+          :scale="state.mapScale"
           :markers="state.mapMarkers"
           :polyline="state.mapPolyline"
           show-location
         >
         </map>
+        <view v-else class="map-placeholder">
+          <text class="placeholder-text">位置信息加载中...</text>
+        </view>
       </view>
       
       <!-- 无人机状态信息 -->
       <view class="drone-status">
+        <!-- 柜子信息 -->
+        <view class="cabinet-info" v-if="state.sourceCabinet || state.targetCabinet">
+          <view class="status-row" v-if="state.sourceCabinet">
+            <view class="status-item full-width">
+              <text class="status-label">起送柜：</text>
+              <text class="status-value cabinet-name">{{ state.sourceCabinet.name }} ({{ state.sourceCabinet.code }})</text>
+            </view>
+          </view>
+          <view class="status-row" v-if="state.targetCabinet">
+            <view class="status-item full-width">
+              <text class="status-label">目标柜：</text>
+              <text class="status-value cabinet-name">{{ state.targetCabinet.name }} ({{ state.targetCabinet.code }})</text>
+            </view>
+          </view>
+        </view>
+        
+        <!-- 无人机状态 -->
         <view class="status-row">
           <view class="status-item">
             <text class="status-label">状态：</text>
@@ -315,7 +336,7 @@
 <script setup>
   import sheep from '@/sheep';
   import { onLoad, onShow, onUnload, onHide } from '@dcloudio/uni-app';
-  import { reactive, ref } from 'vue';
+  import { reactive, ref, computed } from 'vue';
   import { isEmpty } from 'lodash-es';
   import {
     fen2yuan,
@@ -338,10 +359,40 @@
     droneInfo: null, // 无人机信息
     mapMarkers: [], // 地图标记
     mapPolyline: [], // 地图路线
+    sourceCabinet: null, // 起送柜信息
+    targetCabinet: null, // 目标柜信息
+    mapCenter: { latitude: 0, longitude: 0 }, // 地图中心点
+    mapScale: 13, // 地图缩放级别
   });
 
   const mapId = 'droneMap' + Date.now(); // 地图ID
   let droneUpdateTimer = null; // 无人机信息更新定时器
+
+  // 验证坐标是否有效
+  const isValidLocation = computed(() => {
+    if (!state.droneInfo) return false;
+    
+    const lat = parseFloat(state.droneInfo.latitude);
+    const lng = parseFloat(state.droneInfo.longitude);
+    
+    // 检查是否为有效数字且在合理范围内
+    const isValidLat = !isNaN(lat) && lat >= -90 && lat <= 90;
+    const isValidLng = !isNaN(lng) && lng >= -180 && lng <= 180;
+    
+    return isValidLat && isValidLng;
+  });
+
+  // 安全的纬度值
+  const validLatitude = computed(() => {
+    if (!isValidLocation.value) return 0;
+    return parseFloat(state.droneInfo.latitude);
+  });
+
+  // 安全的经度值
+  const validLongitude = computed(() => {
+    if (!isValidLocation.value) return 0;
+    return parseFloat(state.droneInfo.longitude);
+  });
 
   // ========== 门店自提（核销） ==========
   const systemStore = ref({}); // 门店信息
@@ -466,8 +517,24 @@
     try {
       const { code, data } = await DroneApi.getDroneByOrder(orderNo);
       if (code === 0 && data) {
+        // 验证坐标数据
+        const lat = parseFloat(data.latitude);
+        const lng = parseFloat(data.longitude);
+        
+        if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+          console.warn('无人机坐标数据无效:', { latitude: data.latitude, longitude: data.longitude });
+          // 使用默认坐标（可以设置为商店位置或城市中心）
+          data.latitude = 39.9042; // 北京天安门纬度
+          data.longitude = 116.4074; // 北京天安门经度
+        }
+        
         state.droneInfo = data;
-        updateMapMarkers();
+        
+        // 获取起送柜和目标柜信息
+        await getCabinetInfo();
+        
+        // 更新地图显示
+        updateMapView();
         return true;
       }
     } catch (error) {
@@ -476,49 +543,238 @@
     return false;
   }
 
-  // 更新地图标记
-  function updateMapMarkers() {
+  // 获取柜子信息
+  async function getCabinetInfo() {
     if (!state.droneInfo) return;
+    if (!state.droneInfo.sourceCabinetCode && !state.droneInfo.targetCabinetCode) return;
 
-    state.mapMarkers = [
-      // 无人机当前位置
-      {
-        id: 'drone',
-        latitude: state.droneInfo.latitude,
-        longitude: state.droneInfo.longitude,
-        iconPath: '/static/drone-icon.png',
-        width: 40,
-        height: 40,
-        title: state.droneInfo.droneName,
+    try {
+      // 搜索柜子的函数
+      const searchCabinets = async (latitude, longitude, limit = 100) => {
+        const { code, data } = await DroneApi.getNearestCabinetList({
+          latitude,
+          longitude,
+          limit
+        });
+        return code === 0 ? data || [] : [];
+      };
+
+      // 首先使用无人机当前位置搜索
+      let allCabinets = await searchCabinets(validLatitude.value, validLongitude.value, 100);
+      
+      // 如果找不到需要的柜子，尝试使用一些常见城市中心位置扩大搜索范围
+      const targetCodes = [state.droneInfo.sourceCabinetCode, state.droneInfo.targetCabinetCode].filter(Boolean);
+      const foundCodes = allCabinets.map(c => c.code || c.id);
+      const missingCodes = targetCodes.filter(code => !foundCodes.includes(code));
+      
+      if (missingCodes.length > 0) {
+        console.log('部分柜子未找到，扩大搜索范围:', missingCodes);
+        
+        // 尝试一些备用搜索位置（常见城市中心）
+        const backupLocations = [
+          { lat: 39.9042, lng: 116.4074 }, // 北京
+          { lat: 31.2304, lng: 121.4737 }, // 上海
+          { lat: 22.5431, lng: 114.0579 }, // 深圳
+          { lat: 23.1291, lng: 113.2644 }, // 广州
+        ];
+        
+        for (const location of backupLocations) {
+          if (missingCodes.length === 0) break;
+          
+          const moreCabinets = await searchCabinets(location.lat, location.lng, 200);
+          allCabinets = [...allCabinets, ...moreCabinets];
+          
+          // 检查是否找到了缺失的柜子
+          const newFoundCodes = moreCabinets.map(c => c.code || c.id);
+          missingCodes.splice(0, missingCodes.length, ...missingCodes.filter(code => !newFoundCodes.includes(code)));
+        }
+      }
+
+      // 去重（根据code或id）
+      const uniqueCabinets = allCabinets.filter((cabinet, index, self) => 
+        index === self.findIndex(c => (c.code || c.id) === (cabinet.code || cabinet.id))
+      );
+
+      // 根据编号筛选起送柜
+      if (state.droneInfo.sourceCabinetCode) {
+        const sourceCabinet = uniqueCabinets.find(cabinet => 
+          cabinet.code === state.droneInfo.sourceCabinetCode ||
+          cabinet.id === state.droneInfo.sourceCabinetCode
+        );
+        if (sourceCabinet) {
+          state.sourceCabinet = sourceCabinet;
+          console.log('找到起送柜:', sourceCabinet);
+        } else {
+          console.warn('未找到起送柜:', state.droneInfo.sourceCabinetCode);
+        }
+      }
+
+      // 根据编号筛选目标柜
+      if (state.droneInfo.targetCabinetCode) {
+        const targetCabinet = uniqueCabinets.find(cabinet => 
+          cabinet.code === state.droneInfo.targetCabinetCode ||
+          cabinet.id === state.droneInfo.targetCabinetCode
+        );
+        if (targetCabinet) {
+          state.targetCabinet = targetCabinet;
+          console.log('找到目标柜:', targetCabinet);
+        } else {
+          console.warn('未找到目标柜:', state.droneInfo.targetCabinetCode);
+        }
+      }
+
+      console.log(`共搜索到 ${uniqueCabinets.length} 个柜子，起送柜: ${state.sourceCabinet ? '✓' : '✗'}，目标柜: ${state.targetCabinet ? '✓' : '✗'}`);
+      
+    } catch (error) {
+      console.error('获取柜子信息失败:', error);
+    }
+  }
+
+  // 更新地图视图（标记、路线、视角）
+  function updateMapView() {
+    if (!state.droneInfo || !isValidLocation.value) return;
+
+    const markers = [];
+    const polylinePoints = [];
+
+    // 1. 起送柜标记
+    if (state.sourceCabinet && state.sourceCabinet.latitude && state.sourceCabinet.longitude) {
+      markers.push({
+        id: 'source',
+        latitude: parseFloat(state.sourceCabinet.latitude),
+        longitude: parseFloat(state.sourceCabinet.longitude),
+        iconPath: '/static/cabinet-source-icon.png',
+        width: 35,
+        height: 35,
+        title: '起送柜',
         callout: {
-          content: `${state.droneInfo.statusDesc} | 电量: ${state.droneInfo.batteryLevel}%`,
+          content: `起送柜: ${state.sourceCabinet.name}`,
           fontSize: 12,
           borderRadius: 5,
           padding: 5,
-          display: 'ALWAYS'
-        }
-      }
-    ];
-
-    // 如果有目标地址，添加目标标记
-    if (state.orderInfo.receiverAreaId > 0) {
-      // 这里需要将收货地址转换为经纬度坐标
-      // 暂时使用示例坐标，实际项目中需要地址解析服务
-      state.mapMarkers.push({
-        id: 'destination',
-        latitude: state.droneInfo.latitude + 0.01, // 示例偏移
-        longitude: state.droneInfo.longitude + 0.01, // 示例偏移
-        iconPath: '/static/location-icon.png',
-        width: 30,
-        height: 30,
-        title: '收货地址',
-        callout: {
-          content: state.orderInfo.receiverAreaName,
-          fontSize: 12,
-          borderRadius: 5,
-          padding: 5
+          bgColor: '#4CAF50',
+          color: '#FFFFFF'
         }
       });
+      polylinePoints.push({
+        latitude: parseFloat(state.sourceCabinet.latitude),
+        longitude: parseFloat(state.sourceCabinet.longitude)
+      });
+    }
+
+    // 2. 无人机当前位置标记
+    markers.push({
+      id: 'drone',
+      latitude: validLatitude.value,
+      longitude: validLongitude.value,
+      iconPath: '/static/drone-icon.png',
+      width: 40,
+      height: 40,
+      title: state.droneInfo.droneName,
+      callout: {
+        content: `${state.droneInfo.statusDesc} | 电量: ${state.droneInfo.batteryLevel}%`,
+        fontSize: 12,
+        borderRadius: 5,
+        padding: 5,
+        bgColor: '#2196F3',
+        color: '#FFFFFF',
+        display: 'ALWAYS'
+      }
+    });
+    polylinePoints.push({
+      latitude: validLatitude.value,
+      longitude: validLongitude.value
+    });
+
+    // 3. 目标柜标记
+    if (state.targetCabinet && state.targetCabinet.latitude && state.targetCabinet.longitude) {
+      markers.push({
+        id: 'target',
+        latitude: parseFloat(state.targetCabinet.latitude),
+        longitude: parseFloat(state.targetCabinet.longitude),
+        iconPath: '/static/cabinet-target-icon.png',
+        width: 35,
+        height: 35,
+        title: '目标柜',
+        callout: {
+          content: `目标柜: ${state.targetCabinet.name}`,
+          fontSize: 12,
+          borderRadius: 5,
+          padding: 5,
+          bgColor: '#FF9800',
+          color: '#FFFFFF'
+        }
+      });
+      polylinePoints.push({
+        latitude: parseFloat(state.targetCabinet.latitude),
+        longitude: parseFloat(state.targetCabinet.longitude)
+      });
+    }
+
+    // 更新标记
+    state.mapMarkers = markers;
+
+    // 更新路线（连接三个点）
+    if (polylinePoints.length >= 2) {
+      state.mapPolyline = [{
+        points: polylinePoints,
+        color: '#FF5722',
+        width: 4,
+        dottedLine: false,
+        arrowLine: true,
+        borderColor: '#FFFFFF',
+        borderWidth: 2
+      }];
+    }
+
+    // 计算地图中心点和缩放级别
+    calculateMapCenter(polylinePoints);
+  }
+
+  // 计算地图中心点和合适的缩放级别
+  function calculateMapCenter(points) {
+    if (points.length === 0) return;
+
+    if (points.length === 1) {
+      // 只有一个点，以该点为中心
+      state.mapCenter = points[0];
+      state.mapScale = 15;
+      return;
+    }
+
+    // 计算所有点的边界
+    let minLat = points[0].latitude;
+    let maxLat = points[0].latitude;
+    let minLng = points[0].longitude;
+    let maxLng = points[0].longitude;
+
+    points.forEach(point => {
+      minLat = Math.min(minLat, point.latitude);
+      maxLat = Math.max(maxLat, point.latitude);
+      minLng = Math.min(minLng, point.longitude);
+      maxLng = Math.max(maxLng, point.longitude);
+    });
+
+    // 计算中心点
+    state.mapCenter = {
+      latitude: (minLat + maxLat) / 2,
+      longitude: (minLng + maxLng) / 2
+    };
+
+    // 计算合适的缩放级别
+    const latDiff = maxLat - minLat;
+    const lngDiff = maxLng - minLng;
+    const maxDiff = Math.max(latDiff, lngDiff);
+
+    // 根据距离范围设置缩放级别
+    if (maxDiff > 0.1) {
+      state.mapScale = 9;  // 远距离
+    } else if (maxDiff > 0.05) {
+      state.mapScale = 11; // 中距离
+    } else if (maxDiff > 0.01) {
+      state.mapScale = 13; // 近距离
+    } else {
+      state.mapScale = 15; // 很近
     }
   }
 
@@ -726,9 +982,29 @@
         width: 100%;
         height: 100%;
       }
+
+      .map-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f5f5f5;
+
+        .placeholder-text {
+          font-size: 28rpx;
+          color: #999;
+        }
+      }
     }
 
     .drone-status {
+      .cabinet-info {
+        margin-bottom: 20rpx;
+        padding-bottom: 20rpx;
+        border-bottom: 2rpx solid #f0f0f0;
+      }
+      
       .status-row {
         display: flex;
         justify-content: space-between;
@@ -757,6 +1033,11 @@
             }
             &.success {
               color: #4caf50;
+            }
+            
+            &.cabinet-name {
+              color: var(--ui-BG-Main);
+              font-weight: 500;
             }
           }
 

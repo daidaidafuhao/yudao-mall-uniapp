@@ -2,99 +2,76 @@
   <s-layout title="首页" tabbar="/pages/index/index" :bgStyle="bgStyle">
     <!-- 主要内容区域 -->
     <view class="home-container">
-      <!-- 顶部背景装饰区域 -->
-      <view class="top-section">
-        <!-- 厨师插画 -->
-        <view class="chef-illustration">
-          <image 
-            class="chef-img" 
-            src="/static/images/chef-cooking.png" 
-            mode="aspectFit"
-          />
-        </view>
+      <!-- 顶部背景图 -->
+      <view class="top-background">
+        <image class="bg-image" src="/static/images/u986.png" mode="aspectFill" />
         
-        <!-- 装饰元素 -->
-        <view class="decoration-elements">
-          <view class="deco-circle deco-1"></view>
-          <view class="deco-circle deco-2"></view>
-          <view class="deco-triangle"></view>
-        </view>
       </view>
 
       <!-- 用户信息卡片 -->
-      <view class="user-card" v-if="userInfo.nickname">
+      <view class="user-card" @tap="onUserCardTap">
+        <view class="user-avatar">
+          <image 
+            v-if="isLogin && !avatarError && userInfo.avatar"
+            :src="sheep.$url.cdn(userInfo.avatar)" 
+            mode="aspectFill"
+            @error="onAvatarError"
+          />
+          <image 
+            v-else 
+            :src="sheep.$url.static('/static/img/shop/default_avatar.png')" 
+            mode="aspectFill"
+          />
+        </view>
+        
         <view class="user-info">
-          <!-- 头像或默认图标 -->
-          <view class="user-avatar">
-            <image 
-              v-if="!avatarError && userInfo.avatar"
-              :src="userInfo.avatar" 
-              mode="aspectFill"
-              @error="onAvatarError"
-            />
-            <text v-else class="default-avatar-icon">👤</text>
-          </view>
-          <view class="user-details">
-            <view class="user-name">{{ userInfo.nickname }}</view>
-            <view class="user-level">美食会员</view>
-          </view>
+          <view class="user-name">{{ isLogin ? userInfo.nickname : '请先登录' }}</view>
         </view>
-        <view class="points-section">
-          <view class="points-item">
-            <text class="points-icon">⚡</text>
-            <text class="points-text">{{ userInfo.point || 0 }}</text>
-          </view>
-        </view>
+      
       </view>
 
       <!-- 主要功能按钮 -->
       <view class="main-actions">
-        <view class="action-row">
-          <!-- 自取按钮 -->
-          <view class="action-btn dine-in-btn" @tap="onPickup">
+          <!-- 堂食按钮 -->
+        <view class="action-btn dine-in-btn" @tap="onPickup">
             <view class="btn-icon">
-              <text class="icon-text">🏪</text>
+            <image src="/static/images/u995.svg" mode="aspectFit" />
             </view>
-            <text class="btn-text">自取</text>
+          <text class="btn-text" style="font-size: 32rpx !important;">堂食</text>
           </view>
           
-          <!-- 外卖按钮 -->
-          <view class="action-btn takeout-btn" @tap="onDelivery">
+          <!-- 外送按钮 -->
+        <view class="action-btn takeout-btn" @tap="onDelivery">
             <view class="btn-icon">
-              <text class="icon-text">🚁</text>
-            </view>
-            <text class="btn-text">外卖</text>
+            <image src="/static/images/微信图片_20250720133229.jpg" mode="aspectFit" />
           </view>
+          <text class="btn-text" style="font-size: 32rpx !important;">外送</text>
         </view>
       </view>
 
       <!-- 功能菜单 -->
       <view class="function-menu">
-        <view class="menu-row">
-          <view class="menu-item" @tap="onMenuTap('/pages/order/list')">
-            <view class="menu-icon order-icon">
-              <text class="icon-text">📦</text>
-            </view>
-            <text class="menu-text">订单</text>
+        <view class="menu-item" @tap="onOrderList">
+          <view class="menu-icon">
+            <image src="/static/images/u1009.svg" mode="aspectFit" />
+          </view>
+          <text class="menu-text">订单</text>
           </view>
           
-          <view class="menu-item" @tap="onMenuTap('/pages/user/address/list')">
-            <view class="menu-icon address-icon">
-              <text class="icon-text">📍</text>
-            </view>
-            <text class="menu-text">地址</text>
+        <view class="menu-item" @tap="onAddressList">
+          <view class="menu-icon">
+            <image src="/static/images/u1014.svg" mode="aspectFit" />
           </view>
-          
-          <view class="menu-item" @tap="onMenuTap('/pages/index/user')">
-            <view class="menu-icon user-icon">
-              <text class="icon-text">👤</text>
-            </view>
-            <text class="menu-text">我的</text>
+          <text class="menu-text">地址</text>
+        </view>
+        
+        <view class="menu-item" @tap="onUserCenter">
+          <view class="menu-icon">
+            <image src="/static/images/u1017.svg" mode="aspectFit" />
           </view>
+          <text class="menu-text">我的</text>
         </view>
       </view>
-
-
     </view>
   </s-layout>
 </template>
@@ -104,21 +81,15 @@ import { reactive, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import sheep from '@/sheep';
 
-// 背景样式
+// 背景样式 - 纯白色
 const bgStyle = {
-  backgroundColor: '#FFF5E6',
-  backgroundImage: ''
-};
-
-// 导航栏样式
-const navbarStyle = {
-  styleType: 'normal',
-  bgColor: '#FFF5E6',
-  color: '#333'
+  color: '#ffffff',
+  backgroundImage: 'none'
 };
 
 // 用户信息
 const userInfo = computed(() => sheep.$store('user').userInfo);
+const isLogin = computed(() => sheep.$store('user').isLogin);
 const avatarError = reactive({ value: false });
 
 // 头像加载失败处理
@@ -126,23 +97,48 @@ const onAvatarError = () => {
   avatarError.value = true;
 };
 
-// 自取功能
+// 堂食功能（自取）
 const onPickup = () => {
   // 设置配送方式为自取
   sheep.$store('app').setDeliveryMode('pickup');
   sheep.$router.go('/pages/index/category', { fromHome: true });
 };
 
-// 外卖功能 
+// 外送功能
 const onDelivery = () => {
   // 设置配送方式为外卖
   sheep.$store('app').setDeliveryMode('delivery');
   sheep.$router.go('/pages/index/category', { fromHome: true });
 };
 
-// 菜单点击
-const onMenuTap = (url) => {
-  sheep.$router.go(url);
+
+
+// 订单列表
+const onOrderList = () => {
+  sheep.$router.go('/pages/order/list');
+};
+
+// 地址管理
+const onAddressList = () => {
+  sheep.$router.go('/pages/user/address/list');
+};
+
+// 个人中心
+const onUserCenter = () => {
+  sheep.$router.go('/pages/index/user');
+};
+
+// 用户卡片点击
+const onUserCardTap = () => {
+  if (sheep.$store('user').isLogin) {
+    // 已登录，跳转到个人信息页面
+    sheep.$router.go('/pages/user/info');
+  } else {
+    // 未登录，显示登录弹窗
+    sheep.$helper.toast('请先登录');
+    // 可以在这里调用登录模态框
+    // showAuthModal();
+  }
 };
 
 onLoad(() => {
@@ -152,255 +148,162 @@ onLoad(() => {
 </script>
 
 <style lang="scss" scoped>
-.home-container {
-  min-height: calc(100vh - 50px); /* 给tabbar留出空间 */
-  background: linear-gradient(180deg, #FFF5E6 0%, #FFFFFF 50%);
-  position: relative;
+// 应用原型中的背景效果
+page {
+  background-color: #ffffff !important;
+  height: 100vh;
   overflow: hidden;
-  padding-bottom: 80rpx; /* 额外的底部padding */
 }
 
-// 顶部区域
-.top-section {
+body {
+  background-color: #ffffff !important;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.home-container {
+  height: calc(100vh - 50px);
+  background-color: #ffffff !important;
   position: relative;
-  height: 300rpx;
-  margin-bottom: 40rpx;
+  overflow: hidden;
+}
+
+// 顶部背景区域
+.top-background {
+  position: relative;
+  height: 600rpx;
+  width: 100%;
+  overflow: hidden;
+  background-color: #fefcf5; // 乳白黄色背景
   
-  .chef-illustration {
-    position: absolute;
-    top: 20rpx;
-    right: 40rpx;
-    width: 200rpx;
-    height: 200rpx;
-    
-    .chef-img {
+  .bg-image {
       width: 100%;
       height: 100%;
     }
   }
   
-  .decoration-elements {
-    .deco-circle {
-      position: absolute;
-      border-radius: 50%;
-      background: rgba(255, 183, 77, 0.2);
-      
-      &.deco-1 {
-        width: 60rpx;
-        height: 60rpx;
-        top: 50rpx;
-        left: 60rpx;
-      }
-      
-      &.deco-2 {
-        width: 40rpx;
-        height: 40rpx;
-        top: 160rpx;
-        left: 120rpx;
-        background: rgba(255, 218, 121, 0.3);
-      }
-    }
-    
-    .deco-triangle {
-      position: absolute;
-      top: 100rpx;
-      right: 280rpx;
-      width: 0;
-      height: 0;
-      border-left: 20rpx solid transparent;
-      border-right: 20rpx solid transparent;
-      border-bottom: 30rpx solid rgba(255, 183, 77, 0.2);
-    }
-  }
-}
-
-// 用户卡片
+// 用户信息卡片
 .user-card {
-  margin: 0 40rpx 60rpx;
-  background: #FFFFFF;
-  border-radius: 24rpx;
-  padding: 40rpx;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
+  margin: 20rpx 30rpx 40rpx;
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  
-  .user-info {
-    display: flex;
-    align-items: center;
+  position: relative;
+  z-index: 10;
     
     .user-avatar {
       width: 80rpx;
       height: 80rpx;
       border-radius: 40rpx;
-      margin-right: 24rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #f5f5f5;
-      
-      image {
-        width: 100%;
-        height: 100%;
-        border-radius: 40rpx;
-      }
-      
-      .default-avatar-icon {
-        font-size: 40rpx;
-        color: #999;
-      }
-    }
+    overflow: hidden;
     
-    .user-details {
-      .user-name {
-        font-size: 32rpx;
-        font-weight: 600;
-        color: #333;
-        margin-bottom: 8rpx;
-      }
-      
-      .user-level {
-        font-size: 24rpx;
-        color: #999;
-        background: #FFF5E6;
-        padding: 4rpx 16rpx;
-        border-radius: 12rpx;
-        display: inline-block;
-      }
+    image {
+      width: 100%;
+      height: 100%;
     }
   }
   
-  .points-section {
-    .points-item {
-      display: flex;
-      align-items: center;
-      background: #FFF5E6;
-      padding: 12rpx 20rpx;
-      border-radius: 16rpx;
-      
-      .points-icon {
-        font-size: 24rpx;
-        margin-right: 8rpx;
-      }
-      
-      .points-text {
-        font-size: 28rpx;
+  .user-info {
+    flex: 1;
+    margin-left: 24rpx;
+    
+    .user-name {
+      font-size: 34rpx;
         font-weight: 600;
-        color: #FF6B35;
-      }
+      color: #333;
+      line-height: normal;
     }
   }
 }
 
 // 主要功能按钮
 .main-actions {
-  margin: 0 40rpx 60rpx;
-  
-  .action-row {
+  margin: 0 30rpx 40rpx;
     display: flex;
-    gap: 24rpx;
+  gap: 20rpx;
     
     .action-btn {
       flex: 1;
       height: 160rpx;
-      border-radius: 24rpx;
+    background: #ffffff;
+    border-radius: 16rpx;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      position: relative;
-      overflow: hidden;
-      
-      &.dine-in-btn {
-        background: linear-gradient(135deg, #FFB74D 0%, #FFA726 100%);
-        color: white;
-      }
-      
-      &.takeout-btn {
-        background: linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%);
-        color: white;
-      }
+    box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
       
       .btn-icon {
-        width: 60rpx;
-        height: 60rpx;
-        margin-bottom: 16rpx;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+      width: 80rpx;
+      height: 80rpx;
+      margin-bottom: 24rpx;
         
-        .icon-text {
-          font-size: 48rpx;
+        image {
+          width: 100%;
+          height: 100%;
+      }
+    }
+    
+    // 外送按钮特殊图片尺寸
+    &.takeout-btn .btn-icon {
+      width: 100rpx;
+      height: 100rpx;
+      margin-bottom: 4rpx; // 进一步减少间距让文字对齐
+      
+      image {
+        width: 100rpx;
+        height: 100rpx;
         }
       }
       
       .btn-text {
-        font-size: 32rpx;
+      font-size: 32rpx !important;
+      color: #333;
         font-weight: 600;
-      }
-      
-      &::before {
-        content: '';
-        position: absolute;
-        top: -20rpx;
-        right: -20rpx;
-        width: 80rpx;
-        height: 80rpx;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 50%;
-      }
     }
   }
 }
 
 // 功能菜单
 .function-menu {
-  margin: 0 40rpx 60rpx;
-  
-  .menu-row {
+  margin: 0 20rpx 80rpx;
     display: flex;
-    justify-content: space-around;
+  justify-content: space-between;
+  gap: 15rpx;
     
     .menu-item {
+    flex: 1;
+    height: 120rpx;
+    background: #ffffff;
+    border-radius: 20rpx;
       display: flex;
       flex-direction: column;
       align-items: center;
+    justify-content: center;
+    box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
       
       .menu-icon {
-        width: 100rpx;
-        height: 100rpx;
-        border-radius: 20rpx;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+      width: 44rpx;
+      height: 32rpx;
         margin-bottom: 16rpx;
         
-        &.order-icon {
-          background: linear-gradient(135deg, #E1F5FE 0%, #B3E5FC 100%);
-        }
-        
-        &.address-icon {
-          background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
-        }
-        
-        &.user-icon {
-          background: linear-gradient(135deg, #E8F5E8 0%, #C8E6C9 100%);
-        }
-        
-        .icon-text {
-          font-size: 40rpx;
+      image {
+        width: 100%;
+        height: 100%;
         }
       }
       
       .menu-text {
-        font-size: 24rpx;
-        color: #666;
+            font-size: 24rpx;
+            color: #333;
+      font-weight: 500;
+          }
+        }
       }
-    }
-  }
-}
-
-
 
 // 隐藏原生tabbar
 :deep(.uni-tabbar) {
@@ -409,16 +312,29 @@ onLoad(() => {
 
 // 响应式适配
 @media screen and (max-width: 350px) {
-  .main-actions .action-row .action-btn {
-    height: 140rpx;
+  .main-actions .action-btn {
+    height: 100rpx;
     
     .btn-icon {
-      width: 50rpx;
-      height: 50rpx;
+      width: 40rpx;
+      height: 40rpx;
     }
     
     .btn-text {
-      font-size: 28rpx;
+      font-size: 24rpx;
+    }
+  }
+  
+  .function-menu .menu-item {
+    height: 100rpx;
+    
+    .menu-icon {
+      width: 36rpx;
+      height: 28rpx;
+    }
+    
+    .menu-text {
+      font-size: 22rpx;
     }
   }
 }

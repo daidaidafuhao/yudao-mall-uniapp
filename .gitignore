@@ -9,3 +9,6 @@ yarn.lock
 package-lock.json
 *.keystore
 pnpm-lock.yaml
+
+# 小程序素材文件夹
+小程序素材/

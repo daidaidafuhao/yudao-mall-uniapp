@@ -136,15 +136,15 @@ const app = defineStore({
 
 const adaptTemplate = async (appTemplate, templateId) => {
   try {
-    const { data: diyTemplate } = templateId
-      ? // 查询指定模板，一般是预览时使用
-        await DiyApi.getDiyTemplate(templateId)
-      : await DiyApi.getUsedDiyTemplate();
+  const { data: diyTemplate } = templateId
+    ? // 查询指定模板，一般是预览时使用
+      await DiyApi.getDiyTemplate(templateId)
+    : await DiyApi.getUsedDiyTemplate();
     
     console.log('装修模板数据:', diyTemplate);
     
-    // 模板不存在
-    if (!diyTemplate) {
+  // 模板不存在
+  if (!diyTemplate) {
       console.warn('未找到装修模板，使用默认配置');
       // 设置默认 tabbar 配置
       appTemplate.basic.tabbar = {
@@ -180,25 +180,25 @@ const adaptTemplate = async (appTemplate, templateId) => {
           }
         ]
       };
-      return;
-    }
+    return;
+  }
 
-    const tabBar = diyTemplate?.property?.tabBar;
+  const tabBar = diyTemplate?.property?.tabBar;
     console.log('tabBar配置:', tabBar);
     
-    if (tabBar) {
-      appTemplate.basic.tabbar = tabBar;
-      // TODO 商城装修没有对 tabBar 进行角标配置，测试角标需打开以下注释
-      // appTemplate.basic.tabbar.items.forEach((tabBar) => {
-      //   tabBar.dot = false
-      //   tabBar.badge = 100
-      // })
-      // appTemplate.basic.tabbar.badgeStyle = {
-      //   backgroundColor: '#882222',
-      // }
-      if (tabBar?.theme) {
-        appTemplate.basic.theme = tabBar?.theme;
-      }
+  if (tabBar) {
+    appTemplate.basic.tabbar = tabBar;
+    // TODO 商城装修没有对 tabBar 进行角标配置，测试角标需打开以下注释
+    // appTemplate.basic.tabbar.items.forEach((tabBar) => {
+    //   tabBar.dot = false
+    //   tabBar.badge = 100
+    // })
+    // appTemplate.basic.tabbar.badgeStyle = {
+    //   backgroundColor: '#882222',
+    // }
+    if (tabBar?.theme) {
+      appTemplate.basic.theme = tabBar?.theme;
+    }
     } else {
       console.warn('模板中未找到tabBar配置，使用默认配置');
       // 设置默认 tabbar 配置
@@ -237,8 +237,8 @@ const adaptTemplate = async (appTemplate, templateId) => {
       };
     }
     
-    appTemplate.home = diyTemplate?.home;
-    appTemplate.user = diyTemplate?.user;
+  appTemplate.home = diyTemplate?.home;
+  appTemplate.user = diyTemplate?.user;
     
     console.log('最终tabbar配置:', appTemplate.basic.tabbar);
   } catch (error) {
