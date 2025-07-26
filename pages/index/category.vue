@@ -58,8 +58,14 @@
                       :data="item"
                       :topRadius="0"
                       :bottomRadius="0"
-                      @click="onGoodsClick(item)"
-                    />
+                      @click="onGoodsDetailClick(item)"
+                    >
+                      <template #cart>
+                        <view class="lg-buy-box ss-flex ss-col-center ss-row-center" @tap.stop="onBuyClick(item)">
+                          购买
+                        </view>
+                      </template>
+                    </s-goods-column>
                   </view>
                 </view>
               </view>
@@ -246,8 +252,15 @@
     console.log('分类页面渲染完成');
   });
 
-  // 商品点击处理
-  async function onGoodsClick(goods) {
+  // 商品卡片点击处理（跳转详情页）
+  function onGoodsDetailClick(goods) {
+    sheep.$router.go('/pages/goods/index', {
+      id: goods.id,
+    });
+  }
+
+  // 购买按钮点击处理（打开SKU弹框）
+  async function onBuyClick(goods) {
     try {
       // 获取商品详情信息
       const { code, data } = await SpuApi.getSpuDetail(goods.id);
@@ -409,8 +422,25 @@
         font-size: 28rpx;
         color: #999;
       }
-      
+    }
+  }
 
+  // 购买按钮样式
+  :deep(.lg-buy-box) {
+    background: var(--ui-BG-Main, #ff6b35) !important;
+    color: #fff !important;
+    border-radius: 20rpx !important;
+    padding: 8rpx 20rpx !important;
+    font-size: 24rpx !important;
+    font-weight: 500 !important;
+    min-width: 80rpx !important;
+    height: 56rpx !important;
+    box-shadow: 0 2rpx 8rpx rgba(255, 107, 53, 0.3) !important;
+    transition: all 0.3s ease !important;
+    
+    &:active {
+      transform: scale(0.95) !important;
+      box-shadow: 0 1rpx 4rpx rgba(255, 107, 53, 0.5) !important;
     }
   }
 </style>
