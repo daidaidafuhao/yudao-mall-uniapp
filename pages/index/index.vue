@@ -161,7 +161,7 @@ body {
 
 // 主容器
 .home-container {
-  height: calc(100vh - 50px);
+  min-height: calc(100vh - 50px);
   background-color: #ffffff !important;
   position: relative;
   overflow: hidden;
@@ -170,7 +170,7 @@ body {
 // 顶部背景区域
 .top-background {
   position: relative;
-  height: 600rpx;
+  height: 500rpx; // 减少高度，为其他内容留出空间
   width: 100%;
   overflow: hidden;
   background-color: #fefcf5;
@@ -221,10 +221,10 @@ body {
 
 // 主要功能按钮
 .main-actions {
-  margin: 40rpx 30rpx 40rpx; // 增加顶部边距，确保与用户卡片不遮挡
+  margin: 80rpx 30rpx 40rpx; // 增加顶部边距，让按钮整体向下移动
   display: flex;
   gap: 2rpx; // 很小的间距，形成分割线
-  height: 140rpx; // 降低高度，让按钮更矮
+  height: 180rpx; // 等比例扩大高度
   overflow: visible; // 确保父容器也允许内容超出
   
   .action-btn {
@@ -253,11 +253,11 @@ body {
         padding: 0 16rpx 20rpx; // 移除顶部内边距，让图标可以超出
         
         .btn-icon {
-          width: 120rpx; // 进一步扩大图标
-          height: 120rpx;
+          width: 160rpx; // 进一步扩大图标
+          height: 160rpx;
           margin-bottom: 4rpx;
-          margin-top: -40rpx; // 增加负边距，让图标向上更多
-          transform: translateY(-20rpx); // 增加向上偏移
+          margin-top: -40rpx; // 减少负边距，让图标向下一点
+          transform: translateY(-20rpx); // 减少向上偏移，让图标向下一点
         }
         
         .btn-text {
@@ -277,14 +277,14 @@ body {
 }
 // 功能菜单
 .function-menu {
-  margin: 0 20rpx 20rpx; // 减少底部边距，让按钮更接近底部菜单栏
+  margin: 40rpx 20rpx 20rpx; // 增加顶部边距，让功能菜单也向下移动
   display: flex;
   justify-content: space-between;
   gap: 15rpx;
   
   .menu-item {
     flex: 1;
-    height: 200rpx; // 进一步增加高度，让按钮更高
+    height: 200rpx; // 等比例扩大高度
     background: #ffffff;
     border-radius: 20rpx;
     display: flex;
@@ -294,8 +294,8 @@ body {
     box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
     
     .menu-icon {
-      width: 60rpx; // 扩大图标尺寸
-      height: 60rpx; // 扩大图标尺寸
+      width: 80rpx; // 等比例扩大图标
+      height: 80rpx; // 等比例扩大图标
       margin-bottom: 20rpx; // 增加图标与文字的间距
       
       image {
