@@ -50,6 +50,8 @@
 
     <!-- 用户组件：用户卡片 -->
     <s-user-card v-if="type === 'UserCard'" :data="data" :styles="styles" />
+    <!-- 用户组件：竖排用户卡片 -->
+    <s-user-card-vertical v-if="type === 'UserCardVertical'" :data="data" :styles="styles" />
     <!-- 用户组件：用户订单 -->
     <s-order-card v-if="type === 'UserOrder'" :data="data" :styles="styles" />
     <!-- 用户组件：用户资产 -->
@@ -63,6 +65,9 @@
   /**
    * 装修组件 - 组件集
    */
+  import { onMounted } from 'vue';
+  import sUserCardVertical from '../s-user-card-vertical/s-user-card-vertical.vue';
+  
   const props = defineProps({
     type: {
       type: String,
@@ -77,6 +82,14 @@
       default() {},
     },
   });
+ 
+
+
+  // 定义组件
+  defineExpose({
+    sUserCardVertical,
+  });
+    
   function onSearch() {}
 </script>
 

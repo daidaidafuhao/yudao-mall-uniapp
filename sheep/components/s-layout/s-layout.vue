@@ -192,21 +192,43 @@
   // #ifdef MP-WEIXIN
   // 简化版分享配置 - 只启用分享给好友
   try {
-  uni.showShareMenu({
-    withShareTicket: true,
-      // 不指定 menus 参数，使用默认配置（只包含分享给好友）
-  });
+    // 检查是否在支持分享的环境中
+    if (typeof uni.showShareMenu === 'function') {
+      // 添加更安全的调用方式，使用 Promise 处理
+      const showSharePromise = uni.showShareMenu({
+        withShareTicket: true,
+        // 不指定 menus 参数，使用默认配置（只包含分享给好友）
+      });
+      
+      // 如果返回的是 Promise，则处理错误
+      if (showSharePromise && typeof showSharePromise.catch === 'function') {
+        showSharePromise.catch(error => {
+          // 静默处理分享菜单失败的情况
+          console.log('分享菜单不可用:', error.errMsg || error);
+        });
+      }
+    }
   } catch (error) {
-    console.warn('显示分享菜单失败:', error);
+    // 静默处理，不显示错误信息
+    console.log('分享功能初始化失败:', error.errMsg || error);
   }
   
   // 微信小程序分享好友
   onShareAppMessage(() => {
-    return {
-      title: shareInfo.value.title,
-      path: shareInfo.value.forward.path,
-      imageUrl: shareInfo.value.image,
-    };
+    try {
+      return {
+        title: shareInfo.value.title || '分享',
+        path: shareInfo.value.forward?.path || '/pages/index/index',
+        imageUrl: shareInfo.value.image || '',
+      };
+    } catch (error) {
+      console.log('分享信息获取失败:', error);
+      return {
+        title: '分享',
+        path: '/pages/index/index',
+        imageUrl: '',
+      };
+    }
   });
   
   // 如果需要分享到朋友圈，可以单独处理

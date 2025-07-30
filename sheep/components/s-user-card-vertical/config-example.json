@@ -1,0 +1,25 @@
+{
+  "id": "UserCardVertical",
+  "name": "竖排用户卡片",
+  "type": "user",
+  "property": {
+    "space": 0,
+    "style": {
+      "bgType": "color",
+      "bgColor": "#f8f9fa",
+      "marginTop": 0,
+      "marginBottom": 0,
+      "marginLeft": 0,
+      "marginRight": 0,
+      "paddingTop": 0,
+      "paddingBottom": 0,
+      "paddingLeft": 0,
+      "paddingRight": 0,
+      "borderTopLeftRadius": 0,
+      "borderTopRightRadius": 0,
+      "borderBottomLeftRadius": 0,
+      "borderBottomRightRadius": 0
+    }
+  },
+  "description": "竖排布局的用户卡片组件，包含用户信息、数据统计和快捷功能菜单"
+} 
