@@ -88,10 +88,10 @@
           </uni-easyinput>
         </uni-forms-item>
 
-        <uni-forms-item name="password" label="登录密码" @tap="onSetPassword">
+        <uni-forms-item name="password" label="登录密码">
           <uni-easyinput
             v-model="userInfo.password"
-            placeholder="点击修改登录密码"
+            placeholder="已设置密码"
             :inputBorder="false"
             :styles="{ disableColor: '#fff' }"
             disabled
@@ -239,11 +239,6 @@
     if (files.length > 0) {
       state.model.avatar = files[0].url;
     }
-  }
-
-  // 修改密码
-  function onSetPassword() {
-    showAuthModal('changePassword');
   }
 
   // 绑定第三方账号

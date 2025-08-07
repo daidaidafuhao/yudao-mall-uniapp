@@ -4,6 +4,9 @@
     <view class="login-wrap">
       <!-- 微信小程序授权 -->
       <mp-authorization v-if="authType === 'mpAuthorization'" />
+      
+      <!-- 手机号+密码登录 -->
+      <account-login v-if="sheep.$platform.name !== 'WechatMiniProgram'" />
 
       <!-- 第三方登录 -->
       <view class="auto-login-box ss-flex ss-flex-col ss-row-center ss-col-center">
@@ -20,7 +23,7 @@
           <view class="circle" />
         </view>
 
-        <!-- 7.2 微信的公众号、App、小程序的登录，基于 openid + code -->
+        <!-- 7.3 微信的公众号、App、小程序的登录，基于 openid + code -->
         <button
           v-if="
             ['WechatOfficialAccount', 'WechatMiniProgram', 'App'].includes(sheep.$platform.name) &&
@@ -36,48 +39,6 @@
         </button>
       </view>
 
-      <!-- 用户协议的勾选 -->
-      <view class="agreement-box ss-flex ss-flex-col ss-col-center" :class="{ shake: currentProtocol }">
-        <view class="agreement-title ss-m-b-20">请选择是否同意以下协议(请联网查看)：</view>
-        
-        <view class="agreement-options-container">
-          <!-- 同意选项 -->
-          <view class="agreement-option ss-m-b-20">
-            <label class="radio ss-flex ss-col-center" @tap="onAgree">
-              <radio
-                :checked="state.protocol === true"
-                color="var(--ui-BG-Main)"
-                style="transform: scale(0.8)"
-                @tap.stop="onAgree"
-              />
-              <view class="agreement-text ss-flex ss-col-center ss-m-l-8">
-                我已阅读并同意遵守
-                <view class="tcp-text" @tap.stop="onProtocol('用户协议')"> 《用户协议》 </view>
-                <view class="agreement-text">与</view>
-                <view class="tcp-text" @tap.stop="onProtocol('隐私协议')"> 《隐私协议》 </view>
-              </view>
-            </label>
-          </view>
-          
-          <!-- 拒绝选项 -->
-          <view class="agreement-option">
-            <label class="radio ss-flex ss-col-center" @tap="onRefuse">
-              <radio
-                :checked="state.protocol === false"
-                color="#ff4d4f"
-                style="transform: scale(0.8)"
-                @tap.stop="onRefuse"
-              />
-              <view class="agreement-text ss-flex ss-col-center ss-m-l-8">
-                我拒绝遵守
-                <view class="tcp-text" @tap.stop="onProtocol('用户协议')"> 《用户协议》 </view>
-                <view class="agreement-text">与</view>
-                <view class="tcp-text" @tap.stop="onProtocol('隐私协议')"> 《隐私协议》 </view>
-              </view>
-            </label>
-          </view>
-        </view>
-      </view>
       <view class="safe-box" />
     </view>
   </su-popup>
@@ -87,59 +48,20 @@
   import { computed, reactive, ref } from 'vue';
   import sheep from '@/sheep';
   import mpAuthorization from './components/mp-authorization.vue';
+  import accountLogin from './components/account-login.vue';
   import { closeAuthModal, showAuthModal } from '@/sheep/hooks/useModal';
 
   const modalStore = sheep.$store('modal');
   // 授权弹窗类型
   const authType = computed(() => modalStore.auth);
 
-  const state = reactive({
-    protocol: null, // null表示未选择，true表示同意，false表示拒绝
-  });
-
-  const currentProtocol = ref(false);
-
-  // 同意协议
-  function onAgree() {
-    state.protocol = true;
-  }
-  
-  // 拒绝协议
-  function onRefuse() {
-    state.protocol = false;
-  }
-
-  // 查看协议
-  function onProtocol(title) {
-    closeAuthModal();
-    sheep.$router.go('/pages/public/richtext', {
-      title,
-    });
-  }
-
-  // 点击登录 / 注册事件
-  function onConfirm(e) {
-    currentProtocol.value = e;
-    setTimeout(() => {
-      currentProtocol.value = false;
-    }, 1000);
+  // 显示账号登录
+  function showAccountLogin() {
+    showAuthModal('accountLogin');
   }
 
   // 第三方授权登陆（微信）
   const thirdLogin = async (provider) => {
-    if (state.protocol !== true) {
-      currentProtocol.value = true;
-      setTimeout(() => {
-        currentProtocol.value = false;
-      }, 1000);
-      
-      if (state.protocol === false) {
-        sheep.$helper.toast('您已拒绝协议，无法继续登录');
-      } else {
-        sheep.$helper.toast('请选择是否同意协议');
-      }
-      return;
-    }
     const loginRes = await sheep.$platform.useProvider(provider).login();
     if (loginRes) {
       const userInfo = await sheep.$store('user').getInfo();

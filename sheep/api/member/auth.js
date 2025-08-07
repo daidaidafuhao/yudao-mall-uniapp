@@ -49,6 +49,40 @@ const AuthUtil = {
       },
     });
   },
+  // 手机号+密码登录
+  mobilePasswordLogin: (mobile, password) => {
+    return request({
+      url: '/member/auth/login',
+      method: 'POST',
+      data: {
+        mobile,
+        password
+      },
+      custom: {
+        showSuccess: true,
+        loadingMsg: '登录中',
+        successMsg: '登录成功',
+      },
+    });
+  },
+  // 手机号+密码注册
+  mobilePasswordRegister: (mobile, password, confirmPassword, nickname = '') => {
+    return request({
+      url: '/member/auth/register',
+      method: 'POST',
+      data: {
+        mobile,
+        password,
+        confirmPassword,
+        nickname,
+      },
+      custom: {
+        showSuccess: true,
+        loadingMsg: '注册中',
+        successMsg: '注册成功',
+      },
+    });
+  },
   // 创建微信 JS SDK 初始化所需的签名
   createWeixinMpJsapiSignature: (url) => {
     return request({
